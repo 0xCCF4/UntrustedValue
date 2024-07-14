@@ -47,7 +47,9 @@ impl<Insecure> From<Insecure> for UntrustedValue<Insecure> {
     }
 }
 
-impl<Sanitized, Error, Insecure: SanitizeValue<Sanitized, Error>> SanitizeValue<Sanitized, Error> for UntrustedValue<Insecure> {
+impl<Sanitized, Error, Insecure: SanitizeValue<Sanitized, Error>> SanitizeValue<Sanitized, Error>
+    for UntrustedValue<Insecure>
+{
     /// Sanitizes the value.
     ///
     /// The returned value is sanitized and can be safely used.
