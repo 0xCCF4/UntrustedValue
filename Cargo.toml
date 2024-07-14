@@ -8,6 +8,8 @@ license = "MIT"
 homepage = "https://github.com/0xCCF4/UntrustedValues"
 repository = "https://github.com/0xCCF4/UntrustedValues"
 documentation = "https://docs.rs/untrusted-values"
+description = """This crate aim to provide a type-safe way to handle and sanitize potentially untrusted values
+like user input."""
 
 [features]
 allow_usage_without_sanitization = []

@@ -1,5 +1,5 @@
 # Untrusted Value
-This crate aim to provide a type-safe way to handle potentially untrusted values
+This crate aim to provide a type-safe way to handle and sanitize potentially untrusted values
 like user input.
 
 Problem statement: Example: a String coming from a user input should be considered untrusted
@@ -10,28 +10,29 @@ without sanitizing them first.
 
 ## Example usage
 ```rust
-# use UntrustedValues::{SanitizeValue, UntrustedValue};
-#
+use untrusted_value::{SanitizeValue, UntrustedValue};
+
 struct UserDataType {data: i32}
 struct TrustedDataType {data: u32}
 
-# impl From<i32> for UserDataType {
-#     fn from(data: i32) -> Self {
-#         UserDataType {data}
-#     }
-# }
-# 
-# impl From<u32> for TrustedDataType {
-#     fn from(data: u32) -> Self {
-#         TrustedDataType {data}
-#     }
-# }
-# 
+impl From<i32> for UserDataType {
+    fn from(data: i32) -> Self {
+        UserDataType {data}
+    }
+}
+impl From<u32> for TrustedDataType {
+    fn from(data: u32) -> Self {
+        TrustedDataType {data}
+    }
+}
+
 impl SanitizeValue<TrustedDataType, ()> for UserDataType {
     fn sanitize_value(self) -> Result<TrustedDataType, ()> {
         Ok( (self.data.abs() as u32).into() )
     }
 }
+
+/* USAGE */
 
 let user_input: UserDataType = (-36).into();
 let user_input = UntrustedValue::from(user_input);
