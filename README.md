@@ -37,7 +37,8 @@ impl SanitizeValue<TrustedDataType, ()> for UserDataType {
 let user_input: UserDataType = (-36).into();
 let user_input = UntrustedValue::from(user_input);
 
-let trusted_value: TrustedDataType = user_input.sanitize_value().expect("Sanitization failed");
+let trusted_value: TrustedDataType = user_input.sanitize_value()
+    .expect("Sanitization failed");
 ```
 
 If a type may be untrusted or not, the type `MaybeUntrusted` can be used.
