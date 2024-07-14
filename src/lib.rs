@@ -60,7 +60,7 @@ impl<Sanitized, Error, Insecure: SanitizeValue<Sanitized, Error>> SanitizeValue<
 }
 
 /// Represents a value that might be untrusted. See UntrustedValue for more information.
-pub enum MaybeUntrusted<Insecure, Trusted> {
+pub enum MaybeUntrusted<Insecure, Trusted=Insecure> {
     /// Trusted value variant
     Ok(Trusted),
     /// Untrusted value variant
