@@ -1,0 +1,14 @@
+[package]
+name = "UntrustedValue"
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+keywords = ["security", "sanitization", "validation"]
+license = "MIT"
+homepage = "https://github.com/0xCCF4/UntrustedValues"
+repository = "https://github.com/0xCCF4/UntrustedValues"
+documentation = "https://docs.rs/untrusted-values"
+
+[features]
+allow_usage_without_sanitization = []
+default = ["allow_usage_without_sanitization"]
