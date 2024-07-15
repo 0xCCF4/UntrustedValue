@@ -38,6 +38,20 @@ impl<Insecure> UntrustedValue<Insecure> {
     pub fn wrap(value: Insecure) -> Self {
         UntrustedValue { value }
     }
+
+    /// Sanitizes the value using the provided sanitizer.
+    ///
+    /// The sanitizer may transmute the value to a different type.
+    /// If sanitization fails, an error must be returned.
+    pub fn sanitize_with<Sanitizer, Trusted, Error>(
+        self,
+        sanitizer: Sanitizer,
+    ) -> Result<Trusted, Error>
+    where
+        Sanitizer: FnOnce(Insecure) -> Result<Trusted, Error>,
+    {
+        sanitizer(self.value)
+    }
 }
 
 impl<Insecure> From<Insecure> for UntrustedValue<Insecure> {
@@ -58,6 +72,17 @@ impl<Sanitized, Error, Insecure: SanitizeValue<Sanitized, Error>> SanitizeValue<
         self.value.sanitize_value()
     }
 }
+
+impl<Insecure: Clone> Clone for UntrustedValue<Insecure> {
+    /// Clones the value
+    fn clone(&self) -> Self {
+        Self {
+            value: self.value.clone(),
+        }
+    }
+}
+
+impl<Insecure: Copy> Copy for UntrustedValue<Insecure> {}
 
 /// Represents a value that might be untrusted. See UntrustedValue for more information.
 pub enum MaybeUntrusted<Insecure, Trusted = Insecure> {
@@ -112,6 +137,20 @@ impl<Insecure, Trusted> MaybeUntrusted<Insecure, Trusted> {
     pub fn wrap_ok(value: Trusted) -> Self {
         MaybeUntrusted::Ok(value)
     }
+
+    /// Sanitizes the value using the provided sanitizer if the value is untrusted.
+    ///
+    /// The sanitizer may transmute the value to a different type.
+    /// If sanitization fails, an error must be returned.
+    pub fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<Trusted, Error>
+    where
+        Sanitizer: FnOnce(Insecure) -> Result<Trusted, Error>,
+    {
+        match self {
+            MaybeUntrusted::Ok(value) => Ok(value),
+            MaybeUntrusted::Untrusted(value) => value.sanitize_with(sanitizer),
+        }
+    }
 }
 
 impl<Insecure, Trusted> From<UntrustedValue<Insecure>> for MaybeUntrusted<Insecure, Trusted> {
@@ -120,3 +159,15 @@ impl<Insecure, Trusted> From<UntrustedValue<Insecure>> for MaybeUntrusted<Insecu
         MaybeUntrusted::Untrusted(value)
     }
 }
+
+impl<Insecure: Clone, Trusted: Clone> Clone for MaybeUntrusted<Insecure, Trusted> {
+    /// Clones the value
+    fn clone(&self) -> Self {
+        match self {
+            MaybeUntrusted::Ok(value) => MaybeUntrusted::Ok(value.clone()),
+            MaybeUntrusted::Untrusted(value) => MaybeUntrusted::Untrusted(value.clone()),
+        }
+    }
+}
+
+impl<Insecure: Copy, Trusted: Copy> Copy for MaybeUntrusted<Insecure, Trusted> {}

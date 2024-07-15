@@ -10,36 +10,31 @@ without sanitizing them first.
 
 ## Example usage
 ```rust
-use untrusted_value::{SanitizeValue, UntrustedValue};
+use untrusted_value::{UntrustedValue};
 
-struct UserDataType {data: i32}
-struct TrustedDataType {data: u32}
-
-impl From<i32> for UserDataType {
-    fn from(data: i32) -> Self {
-        UserDataType {data}
-    }
-}
-impl From<u32> for TrustedDataType {
-    fn from(data: u32) -> Self {
-        TrustedDataType {data}
-    }
-}
-
-impl SanitizeValue<TrustedDataType, ()> for UserDataType {
-    fn sanitize_value(self) -> Result<TrustedDataType, ()> {
-        Ok( (self.data.abs() as u32).into() )
-    }
-}
-
-/* USAGE */
-
-let user_input: UserDataType = (-36).into();
+let user_input: i32 = -36;
 let user_input = UntrustedValue::from(user_input);
 
-let trusted_value: TrustedDataType = user_input.sanitize_value()
-    .expect("Sanitization failed");
+let trusted_value: u32 = user_input.clone().sanitize_with(|value| {
+   Ok::<u32, ()>(value.abs() as u32)
+}).expect("Sanitization failed");
+
+println!("Sanitized value: {:?}", trusted_value);
+
+// OR
+
+let trusted_value: u32 = user_input.sanitize_with(|value| {
+   if value < -100 {
+      Err("Failed to sanitize value")
+   } else {
+      Ok(value.abs() as u32)
+   }
+}).expect("Sanitization failed");
+
+println!("Sanitized value: {:?}", trusted_value);
 ```
+
+See also the examples in the `examples` directory.
 
 If a type may be untrusted or not, the type `MaybeUntrusted` can be used.
 
@@ -52,7 +47,7 @@ cargo add untrusted-value
 ## Features
 The features enabled by default include:
 * `allow_usage_without_sanitization`: enables the method `use_untrusted_value`
-   to just use unpack an untrusted value. 
+   to just use unpack an untrusted value (which might not be desirable). 
 
 ## Contribution
 Contributions to the project are welcome! If you have a feature request,
