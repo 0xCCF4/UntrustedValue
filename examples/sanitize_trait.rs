@@ -21,7 +21,7 @@ impl From<u32> for TrustedDataType {
 
 impl SanitizeValue<TrustedDataType, ()> for UserDataType {
     fn sanitize_value(self) -> Result<TrustedDataType, ()> {
-        Ok((self.data.abs() as u32).into())
+        Ok(self.data.unsigned_abs().into())
     }
 }
 

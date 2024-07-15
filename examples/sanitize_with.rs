@@ -6,8 +6,7 @@ fn main() {
     let user_input = UntrustedValue::from(user_input);
 
     let trusted_value: u32 = user_input
-        .clone()
-        .sanitize_with(|value| Ok::<u32, ()>(value.abs() as u32))
+        .sanitize_with(|value| Ok::<u32, ()>(value.unsigned_abs()))
         .expect("Sanitization failed");
 
     println!("Sanitized value: {:?}", trusted_value);
@@ -19,7 +18,7 @@ fn main() {
             if value < -100 {
                 Err("Failed to sanitize value")
             } else {
-                Ok(value.abs() as u32)
+                Ok(value.unsigned_abs())
             }
         })
         .expect("Sanitization failed");
