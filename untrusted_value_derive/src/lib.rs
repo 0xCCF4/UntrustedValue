@@ -9,6 +9,8 @@ use proc_macro::TokenStream;
 /// An instance of a struct like this:
 /// ```rust
 /// # use untrusted_value_derive::UntrustedVariant;
+/// use untrusted_value::IntoUntrustedVariant;
+///
 /// #[derive(UntrustedVariant)]
 /// pub struct Example {
 ///    pub name: String,

@@ -8,8 +8,7 @@ where
     /// `untrusted_value::UntrustedValue` fields.
     ///
     /// An instance of a struct like this:
-    /// ```rust
-    /// # use untrusted_value_derive::UntrustedVariant;
+    /// ```ignore
     /// #[derive(UntrustedVariant)]
     /// pub struct Example {
     ///    pub name: String,

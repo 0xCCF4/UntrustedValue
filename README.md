@@ -12,7 +12,7 @@ without sanitizing them first.
 The backbone of this crate is the `UntrustedValue` type which contains
 considered unsafe data. 
 ```rust
-use untrusted_value::{UntrustedValue};
+use untrusted_value::{UntrustedValue, SanitizeWith};
 
 let user_input: i32 = -36;
 let user_input = UntrustedValue::from(user_input);
@@ -37,9 +37,9 @@ pub struct NetworkConfig {
   pub listen_address: String,
 }
 
-fn sanitize_ip_address(address: &str) -> Result<String, ()> {
+fn sanitize_ip_address(address: String) -> Result<String, ()> {
     // somehow sanitize the address
-    Ok(address.to_string())
+    Ok(address)
 }
 
 fn sanitize_port(port: u32) -> Result<u32, ()> {
