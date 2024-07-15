@@ -1,5 +1,7 @@
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
+
+pub use untrusted_value_derive_internals::*;
 
 /// The type implementing this struct can be sanitized.
 ///
@@ -38,15 +40,14 @@ impl<Insecure> UntrustedValue<Insecure> {
     pub fn wrap(value: Insecure) -> Self {
         UntrustedValue { value }
     }
+}
 
+impl<Insecure, Trusted> SanitizeWith<Insecure, Trusted> for UntrustedValue<Insecure> {
     /// Sanitizes the value using the provided sanitizer.
     ///
     /// The sanitizer may transmute the value to a different type.
     /// If sanitization fails, an error must be returned.
-    pub fn sanitize_with<Sanitizer, Trusted, Error>(
-        self,
-        sanitizer: Sanitizer,
-    ) -> Result<Trusted, Error>
+    fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<Trusted, Error>
     where
         Sanitizer: FnOnce(Insecure) -> Result<Trusted, Error>,
     {
@@ -137,12 +138,14 @@ impl<Insecure, Trusted> MaybeUntrusted<Insecure, Trusted> {
     pub fn wrap_ok(value: Trusted) -> Self {
         MaybeUntrusted::Ok(value)
     }
+}
 
+impl<Insecure, Trusted> SanitizeWith<Insecure, Trusted> for MaybeUntrusted<Insecure, Trusted> {
     /// Sanitizes the value using the provided sanitizer if the value is untrusted.
     ///
     /// The sanitizer may transmute the value to a different type.
     /// If sanitization fails, an error must be returned.
-    pub fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<Trusted, Error>
+    fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<Trusted, Error>
     where
         Sanitizer: FnOnce(Insecure) -> Result<Trusted, Error>,
     {

@@ -1,0 +1,14 @@
+[package]
+name = "untrusted_value_derive"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0.71"
+quote = "1.0.36"
+
+[dev-dependencies]
+untrusted_value = { version = "0", path = "../untrusted_value" }

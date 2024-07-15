@@ -1,0 +1,22 @@
+[package]
+name = "untrusted_value"
+version = "0.1.2"
+edition = "2021"
+readme = "../README.md"
+keywords = ["security", "sanitization", "validation"]
+license = "MIT"
+homepage = "https://github.com/0xCCF4/UntrustedValues"
+repository = "https://github.com/0xCCF4/UntrustedValues"
+documentation = "https://docs.rs/untrusted-values"
+description = """This crate aim to provide a type-safe way to handle and sanitize potentially untrusted values
+like user input."""
+
+[dependencies]
+# TODO: Change to cargo crate
+untrusted_value_derive = {version = "0.1.0", optional = true, path = "../untrusted_value_derive"}
+untrusted_value_derive_internals = {version = "0.1.0", optional = true, path = "../untrusted_value_derive_internals"}
+
+[features]
+allow_usage_without_sanitization = []
+derive = [ "dep:untrusted_value_derive", "dep:untrusted_value_derive_internals" ]
+default = ["allow_usage_without_sanitization", "derive"]
