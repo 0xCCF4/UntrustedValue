@@ -7,24 +7,30 @@ pub struct NetworkConfig {
     pub listen_address: String,
 }
 
+fn sanitize_ip_address(address: String) -> Result<String, ()> {
+    // somehow sanitize the address
+    Ok(address)
+}
+
+fn sanitize_port(port: u32) -> Result<u32, ()> {
+    // somehow sanitize the port
+    Ok(port)
+}
+
 fn main() {
     let user_input_from_config = NetworkConfig {
         port: 3000,
         listen_address: "127.0.0.0.0.0.1".to_string(),
-    }
-    .to_untrusted_variant();
+    };
+    let user_input_from_config = user_input_from_config.to_untrusted_variant();
+
+    //let clone = user_input_from_config.clone();
 
     let _value = user_input_from_config
         .sanitize_with(|value| {
             Ok::<NetworkConfig, ()>(NetworkConfig {
-                port: value
-                    .port
-                    .sanitize_with(|port| Ok::<u32, ()>(port + 1))
-                    .unwrap(),
-                listen_address: value
-                    .listen_address
-                    .sanitize_with(|address| Ok::<String, ()>(address + "test"))
-                    .unwrap(),
+                port: value.port.sanitize_with(sanitize_port)?,
+                listen_address: value.listen_address.sanitize_with(sanitize_ip_address)?,
             })
         })
         .expect("Sanitization failed");
