@@ -2,6 +2,14 @@
 name = "untrusted_value_derive_internals"
 version = "0.1.0"
 edition = "2021"
+readme = "../README.md"
+keywords = ["security", "sanitization", "validation"]
+license = "MIT"
+homepage = "https://github.com/0xCCF4/UntrustedValues"
+repository = "https://github.com/0xCCF4/UntrustedValues"
+documentation = "https://docs.rs/untrusted-value_derive_internals"
+description = """This crate aim to provide a type-safe way to handle and sanitize potentially untrusted values
+like user input."""
 
 [lib]
 path = "lib.rs"
