@@ -2,7 +2,7 @@
 //! This crate aim to provide a type-safe way to handle and sanitize potentially untrusted values
 //! like user input.
 //!
-//! It provides way to introduce compile-time [Taint checking](https://en.wikipedia.org/wiki/Taint_checking)
+//! It aims to provide compile-time [Taint checking](https://en.wikipedia.org/wiki/Taint_checking)
 //! into Rust. All user input or in general all input coming from the outside
 //! world into the program must be seen as untrusted and potentially malicious (called tainted).
 //! A tainted value keeps its taint until a proper sanitation function is called
@@ -35,7 +35,7 @@
 //! ```rust
 //! pub use untrusted_value::{IntoUntrustedVariant, SanitizeValue};
 //! use untrusted_value::UntrustedValue;
-//! pub use untrusted_value_derive::UntrustedVariant;//!
+//! pub use untrusted_value_derive::UntrustedVariant;
 //!
 //! use untrusted_value_derive_internals::SanitizeWith;
 //!
@@ -76,6 +76,33 @@
 //! let user_data_clean = user_data.sanitize_value();
 //! ```
 //!
+//! When a function is called by an application framework like Rocket/Poem/...,
+//! the macro `untrusted_inputs` may be used to taint the function inputs:
+//!
+//! ```rust
+//! use untrusted_value_derive::untrusted_inputs;
+//! use untrusted_value_derive_internals::SanitizeWith;
+//! #
+//! # fn no_sanitize<T>(value: T) -> Result<T, ()>{
+//! #    Ok(value)
+//! # }
+//!
+//! // #[route(path = "/"), method = "get"]
+//! #[untrusted_inputs]
+//! fn index(name: &str) -> Result<String, ()> {
+//!     // MACRO inserts the following code:
+//!         // let name = UntrustedValue::from(name);
+//!         // let ... = UntrustedValue::from(...);
+//!
+//!     // we can not use "name" directly, since it is
+//!     // wrapped in an UntrustedValue
+//!
+//!     // we must explicitly sanitize the value before usage
+//!     let name = name.sanitize_with(no_sanitize)?;
+//!     Ok(format!("Hello, {}!", name))
+//! }
+//! ```
+//!
 //! See also the examples in the `examples` directory.
 //!
 //! ## Installation
@@ -94,6 +121,12 @@
 //!     implemented `fn sanitize_value(self)` errors-early. Which may be undesired if sanitizing timing side
 //!     channels are a concern. When enabling this feature, first all sanitizers are run, then
 //!     the first error is propagated.
+//!
+//! ## Limitations
+//! Providing a taint tracking system is nice but still requires the developer to
+//! taint the data properly. Currently, we are working on providing a crate level macro
+//! to automatically check common taint source like input from environment variables, args, and
+//! common frameworks, that will create a compile error if input data has not been tainted.
 //!
 //! ## Contribution
 //! Contributions to the project are welcome! If you have a feature request,

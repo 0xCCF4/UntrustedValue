@@ -93,10 +93,7 @@ use syn::{Data, Field, Fields};
 /// ```
 #[proc_macro_derive(UntrustedVariant, attributes(untrusted_derive))]
 pub fn untrusted_variant_derive(input: TokenStream) -> TokenStream {
-    // Parse the string representation
     let ast = syn::parse(input).unwrap();
-
-    // Build the trait implementation
     untrusted_variant::impl_untrusted_variant(&ast).into()
 }
 
@@ -116,11 +113,40 @@ pub fn untrusted_variant_derive(input: TokenStream) -> TokenStream {
 /// error is propagated directly.
 #[proc_macro_derive(SanitizeValue)]
 pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
-    // Parse the string representation
     let ast = syn::parse(input).unwrap();
-
-    // Build the trait implementation
     sanitize_value::impl_sanitize_value(&ast).into()
+}
+
+/// This macro can be used to annotate functions to automatically wrap the
+/// function arguments as `UntrustedValue<ArgType>`.
+///
+/// A function with the following signature:
+/// ```rust
+/// use untrusted_value_derive::untrusted_inputs;
+///
+/// #[untrusted_inputs]
+/// fn index(name: &str) {
+///     /// some logic
+/// }
+/// ```
+/// Will be converted into:
+/// ```rust
+/// use untrusted_value::UntrustedValue;
+/// use untrusted_value_derive::untrusted_inputs;
+///
+/// fn index(name: &str) {
+///     let name = UntrustedValue::from(name);
+///     /// some logic
+/// }
+/// ```
+///
+/// This prevents the logic from using the tainted function inputs without proper sanitation.
+///
+/// This macro should be put at any binary entry points. Like when using a webserver the functions
+/// handling a specific web request.
+#[proc_macro_attribute]
+pub fn untrusted_inputs(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    untrusted_inputs::impl_untrusted_inputs(item.into()).into()
 }
 
 fn extract_struct_fields_from_ast(ast: &syn::DeriveInput) -> &Punctuated<Field, Comma> {
@@ -135,4 +161,5 @@ fn extract_struct_fields_from_ast(ast: &syn::DeriveInput) -> &Punctuated<Field, 
 }
 
 mod sanitize_value;
+mod untrusted_inputs;
 mod untrusted_variant;

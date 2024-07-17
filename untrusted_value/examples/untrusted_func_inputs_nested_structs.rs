@@ -1,5 +1,7 @@
-use untrusted_value::{IntoUntrustedVariant, SanitizeValue, SanitizeWith, UntrustedValue};
+use untrusted_value::{IntoUntrustedVariant, SanitizeValue, UntrustedValue};
+use untrusted_value_derive::untrusted_inputs;
 use untrusted_value_derive::UntrustedVariant;
+use untrusted_value_derive_internals::SanitizeWith;
 
 // note:
 // - trusted version: support debugs
@@ -39,20 +41,26 @@ impl SanitizeValue<DatabaseConfig> for UntrustedValue<DatabaseConfig> {
     }
 }
 
-fn user_input_func() -> GeneralConfigUntrusted {
-    let value_from_deserialize = GeneralConfig {
-        database: DatabaseConfig {},
-        network: NetworkConfig {
-            port: 3000,
-            listen_address: "127.0.0.0.0.0.1".to_string(),
-        },
-    };
+#[untrusted_inputs]
+fn response_from_database(config: GeneralConfig) -> Result<GeneralConfig, ()> {
+    // we can not use name directly, since it is
+    // wrapped in an UntrustedValue
 
-    value_from_deserialize.to_untrusted_variant()
+    // unpacks the untrusted value but propagate taint to members
+    let unpacked = config.to_untrusted_variant();
+
+    // now we can sanitize the value
+    unpacked.sanitize_value()
 }
 
 fn main() {
-    let user_input = user_input_func();
-
-    let _value = user_input.sanitize_value();
+    // do a call to index route
+    assert!(response_from_database(GeneralConfig {
+        database: DatabaseConfig {},
+        network: NetworkConfig {
+            port: 3000,
+            listen_address: "<script>alert('xss')</script>".to_string(),
+        },
+    })
+    .is_ok());
 }
