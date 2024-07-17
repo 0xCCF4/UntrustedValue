@@ -15,8 +15,13 @@ like user input."""
 proc-macro = true
 
 [dependencies]
-syn = "2.0.71"
+syn = { version = "2.0.71", features = ["derive", "parsing"] }
 quote = "1.0.36"
+proc-macro2 = "1.0.86"
 
 [dev-dependencies]
 untrusted_value = { version = "0", path = "../untrusted_value" }
+
+[features]
+harden_sanitize = []
+default = []

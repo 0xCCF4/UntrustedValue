@@ -1,6 +1,9 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
+use syn::punctuated::Punctuated;
+use syn::token::Comma;
+use syn::{Data, Field, Fields};
 
 /// This macro can be used to annotate struct that contains data that
 /// might be untrusted. The macro will generate a new struct that wraps
@@ -28,6 +31,9 @@ use proc_macro::TokenStream;
 /// - `untrusted_value::IntoUntrustedVariant` to convert the struct into the untrusted variant of it
 /// - `untrusted_value::SanitizeWith` to sanitize the untrusted variant using a provided sanitizer to its original form
 ///
+/// This proc macro supports the following attributes:
+/// - `#[untrusted_derive(...)]` to implement derive macros for the untrusted variant struct
+///
 /// # Example
 /// Image the situation where a struct is read from a configuration file using Serde.
 /// The struct will look like this
@@ -43,7 +49,8 @@ use proc_macro::TokenStream;
 /// pub use untrusted_value::{IntoUntrustedVariant, SanitizeWith};
 /// pub use untrusted_value_derive::UntrustedVariant;
 ///
-/// #[derive(UntrustedVariant)]
+/// #[derive(UntrustedVariant, Clone, Debug)] // safe version: is cloneable and debuggable
+/// #[untrusted_derive(Clone)] // untrusted version: is cloneable, but not debuggable!
 /// pub struct NetworkConfig {
 ///   pub port: u32,
 ///   pub listen_address: String,
@@ -84,13 +91,48 @@ use proc_macro::TokenStream;
 ///         })
 ///         .expect("Sanitization failed");
 /// ```
-#[proc_macro_derive(UntrustedVariant)]
+#[proc_macro_derive(UntrustedVariant, attributes(untrusted_derive))]
 pub fn untrusted_variant_derive(input: TokenStream) -> TokenStream {
     // Parse the string representation
     let ast = syn::parse(input).unwrap();
 
     // Build the trait implementation
-    untrusted_variant::impl_untrusted_variant(&ast)
+    untrusted_variant::impl_untrusted_variant(&ast).into()
 }
 
+/// This macro can be used to annotate structs and automatically implement
+/// the `untrusted_value::SanitizeValue` trait.
+///
+/// It has two operation modes:
+/// 1. Usage within `#[derive(SanitizeValue)]`: Here, the implementation
+///     calls `.sanitize_value()` on each member and return the same struct type.
+///     Members types are required to implement `SanitizeValue(MemberType)` trait.
+/// 2. Usage withing `#[untrusted_derive(...)]`: Here, the implementation
+///     will need `UntrustedValue<MemberType>` to implement `SanitizeValue(MemberType)`.
+///
+/// When using the `derive_harden_sanitize` feature first all sanitizer functions
+/// are called. Then the (first) error (if any) is propagated.
+/// If the flag is not present, the sanitizers are called sequentially and the first
+/// error is propagated directly.
+#[proc_macro_derive(SanitizeValue)]
+pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
+    // Parse the string representation
+    let ast = syn::parse(input).unwrap();
+
+    // Build the trait implementation
+    sanitize_value::impl_sanitize_value(&ast).into()
+}
+
+fn extract_struct_fields_from_ast(ast: &syn::DeriveInput) -> &Punctuated<Field, Comma> {
+    match &ast.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(fields_named) => &fields_named.named,
+            Fields::Unnamed(fields_unnamed) => &fields_unnamed.unnamed,
+            Fields::Unit => panic!("Unit structs are not supported"),
+        },
+        _ => panic!("Only structs are supported"),
+    }
+}
+
+mod sanitize_value;
 mod untrusted_variant;

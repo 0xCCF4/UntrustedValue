@@ -19,8 +19,9 @@ impl From<u32> for TrustedDataType {
     }
 }
 
-impl SanitizeValue<TrustedDataType, ()> for UserDataType {
-    fn sanitize_value(self) -> Result<TrustedDataType, ()> {
+impl SanitizeValue<TrustedDataType> for UserDataType {
+    type Error = ();
+    fn sanitize_value(self) -> Result<TrustedDataType, Self::Error> {
         Ok(self.data.unsigned_abs().into())
     }
 }

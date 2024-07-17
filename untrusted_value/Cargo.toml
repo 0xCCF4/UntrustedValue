@@ -12,10 +12,11 @@ description = """This crate aim to provide a type-safe way to handle and sanitiz
 like user input."""
 
 [dependencies]
-untrusted_value_derive = {version = "0.1.0", optional = true}
-untrusted_value_derive_internals = {version = "0.1.0"}
+untrusted_value_derive = {version = "0.1.0", optional = true, path = "../untrusted_value_derive"}
+untrusted_value_derive_internals = {version = "0.1.0", path = "../untrusted_value_derive_internals"}
 
 [features]
 allow_usage_without_sanitization = []
 derive = [ "dep:untrusted_value_derive" ]
+derive_harden_sanitize = [ "derive", "untrusted_value_derive/harden_sanitize" ]
 default = ["allow_usage_without_sanitization", "derive"]

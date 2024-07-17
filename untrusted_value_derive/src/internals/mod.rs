@@ -37,3 +37,18 @@ pub trait SanitizeWith<Insecure, Trusted> {
     where
         Sanitizer: FnOnce(Insecure) -> Result<Trusted, Error>;
 }
+
+/// The type implementing this struct can be sanitized.
+///
+/// Calling `sanitize_value()` on the implementing type should return a sanitized version of the value.
+/// If the value cannot be sanitized, an error should be returned.
+pub trait SanitizeValue<Trusted> {
+    type Error;
+
+    /// Sanitizes the value.
+    /// The returned value might be of a different type.
+    ///
+    /// The returned value is sanitized and can be safely used.
+    /// If the value cannot be sanitized, an error must be returned.
+    fn sanitize_value(self) -> Result<Trusted, Self::Error>;
+}

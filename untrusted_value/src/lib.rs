@@ -2,113 +2,106 @@
 //! This crate aim to provide a type-safe way to handle and sanitize potentially untrusted values
 //! like user input.
 //!
-//! Problem statement: Example: a String coming from a user input should be considered untrusted
-//! while another String may be trusted application-wise. This difference
-//! should be enforced using the Rust type-system.
-//! It is therefore impossible to use user input or other untrusted values
-//! without sanitizing them first.
+//! It provides way to introduce compile-time [Taint checking](https://en.wikipedia.org/wiki/Taint_checking)
+//! into Rust. All user input or in general all input coming from the outside
+//! world into the program must be seen as untrusted and potentially malicious (called tainted).
+//! A tainted value keeps its taint until a proper sanitation function is called
+//! upon the tainted data, clearing its taint.
+//!
+//! This crate introduces several data types, traits and macros to simplify the process
+//! of taint tracking.
 //!
 //! ## Example usage
-//! The backbone of this crate is the [UntrustedValue] type which contains
-//! considered unsafe data.
+//! User data must be wrapped within the container [UntrustedValue] which
+//! provides marks the contained data as tainted.
 //! ```rust
 //! use untrusted_value::{UntrustedValue, SanitizeWith};
 //! #
 //! # let user_input: i32 = -36;
 //! let user_input = UntrustedValue::from(user_input);
 //!
-//! let trusted_value: u32 = user_input.sanitize_with(|value| {
-//! Ok::<u32, ()>(value.unsigned_abs())
-//! }).expect("Sanitization failed");
+//! let trusted_value: u32 = user_input.sanitize_with(
+//! # |value| {
+//! # Ok::<u32, ()>(value.unsigned_abs())
+//! # }
+//!     // ...
+//! ).expect("Sanitization failed");
 //!
 //! println!("Sanitized value: {:?}", trusted_value);
 //! ```
 //!
-//! When user data is a struct of different subcomponent that may have different
-//! sanitation procedures:
+//! When user data is a struct of different subtypes:
 //!
 //! ```rust
-//! pub use untrusted_value::{IntoUntrustedVariant, SanitizeWith};
-//! pub use untrusted_value_derive::UntrustedVariant;
+//! pub use untrusted_value::{IntoUntrustedVariant, SanitizeValue};
+//! use untrusted_value::UntrustedValue;
+//! pub use untrusted_value_derive::UntrustedVariant;//!
+//!
+//! use untrusted_value_derive_internals::SanitizeWith;
 //!
 //! #[derive(UntrustedVariant)]
+//! #[untrusted_derive(Clone)] // tainted variant should be Cloneable
 //! pub struct NetworkConfig {
 //!     pub port: u32,
 //!     pub listen_address: String,
 //! }
 //!
-//! fn sanitize_ip_address(address: String) -> Result<String, ()> {
-//!     // somehow sanitize the address
-//! #   Ok(address)
+//! # fn no_sanitize<T>(value: T) -> Result<T, ()>{
+//! #     Ok(value)
+//! # }
+//! #
+//! impl SanitizeValue<NetworkConfig> for NetworkConfigUntrusted {
+//!     type Error = ();
+//!
+//!     fn sanitize_value(self) -> Result<NetworkConfig, Self::Error> {
+//!         Ok(NetworkConfig {
+//!             port: self.port.sanitize_with(no_sanitize)?,
+//!             listen_address: self.listen_address.sanitize_with(no_sanitize)?
+//!         })
+//!     }
 //! }
 //!
-//! fn sanitize_port(port: u32) -> Result<u32, ()> {
-//!     // somehow sanitize the port
-//! #   Ok(port)
+//! fn load_from_config() -> NetworkConfigUntrusted {
+//!     let from_serde = NetworkConfig {
+//!         port: 1111,
+//!         listen_address: "0.0.0.0".into(),
+//!     };
+//!     from_serde.to_untrusted_variant()
 //! }
 //!
-//! fn load_from_config() -> NetworkConfig {
-//!     // ...
-//! #   NetworkConfig {
-//! #       port: 1111,
-//! #       listen_address: "0.0.0.0".into(),
-//! #   }
-//! }
-//!
-//! let user_data = load_from_config().to_untrusted_variant();
+//! let user_data = load_from_config();
 //!
 //! // user data cannot be used on accident, since it is contained inside UntrustedValues
 //!
-//! let user_data_clean = user_data
-//!         .sanitize_with(|value| {
-//!             Ok::<NetworkConfig, ()>(NetworkConfig {
-//!                 port: value
-//!                     .port
-//!                     .sanitize_with(sanitize_port)?,
-//!                 listen_address: value
-//!                     .listen_address
-//!                     .sanitize_with(sanitize_ip_address)?
-//!             })
-//!         })
-//!         .expect("Sanitization failed");
+//! let user_data_clean = user_data.sanitize_value();
 //! ```
 //!
 //! See also the examples in the `examples` directory.
 //!
 //! ## Installation
-//! The tool is written in Rust, and can be installed using `cargo`:
+//! The library is written in Rust, and can be added using `cargo`:
 //! ```bash
 //! cargo add untrusted-value
 //! ```
 //!
 //! ## Features
-//! The features enabled by default include:
-//! * `allow_usage_without_sanitization`: enables the method `use_untrusted_value`
-//! to just use unpack an untrusted value (which might not be desirable).
+//! Enabled by default:
+//!  * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to just use clear the taint of a value.
+//!  * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`)
+//!
+//! Optional features:
+//!  * `derive_harden_sanitize`: enables hardening for the derive macro `SanitizeValue`. When this feature is disabled, the
+//!     implemented `fn sanitize_value(self)` errors-early. Which may be undesired if sanitizing timing side
+//!     channels are a concern. When enabling this feature, first all sanitizers are run, then
+//!     the first error is propagated.
 //!
 //! ## Contribution
 //! Contributions to the project are welcome! If you have a feature request,
 //! bug report, or want to contribute to the code, please open an
 //! issue or a pull request.
-//!
-//! ## License
-//! This project is licensed under the MIT license. See the LICENSE file for details.
 #![warn(missing_docs)]
 
 pub use untrusted_value_derive_internals::*;
-
-/// The type implementing this struct can be sanitized.
-///
-/// Calling `sanitize_value()` on the implementing type should return a sanitized version of the value.
-/// If the value cannot be sanitized, an error should be returned.
-pub trait SanitizeValue<Trusted, Error> {
-    /// Sanitizes the value.
-    /// The returned value might be of a different type.
-    ///
-    /// The returned value is sanitized and can be safely used.
-    /// If the value cannot be sanitized, an error must be returned.
-    fn sanitize_value(self) -> Result<Trusted, Error>;
-}
 
 /// Represents an untrusted/untrustworthy value.
 ///
@@ -136,6 +129,9 @@ impl<Insecure> UntrustedValue<Insecure> {
     }
 }
 
+// does explicitly not implement Debug, Display, etc. to avoid processing untrusted data
+// if desired, implement these traits manually for UntrustedValue<SomeCustomType>
+
 impl<Insecure, Trusted> SanitizeWith<Insecure, Trusted> for UntrustedValue<Insecure> {
     /// Sanitizes the value using the provided sanitizer.
     ///
@@ -156,24 +152,26 @@ impl<Insecure> From<Insecure> for UntrustedValue<Insecure> {
     }
 }
 
-impl<Sanitized, Error, Insecure: SanitizeValue<Sanitized, Error>> SanitizeValue<Sanitized, Error>
-    for UntrustedValue<Insecure>
-{
-    /// Sanitizes the value.
-    ///
-    /// The returned value is sanitized and can be safely used.
-    /// If the value cannot be sanitized, an error must be returned.
-    fn sanitize_value(self) -> Result<Sanitized, Error> {
-        self.value.sanitize_value()
-    }
-}
-
 impl<Insecure: Clone> Clone for UntrustedValue<Insecure> {
     /// Clones the value
     fn clone(&self) -> Self {
         Self {
             value: self.value.clone(),
         }
+    }
+}
+
+impl<Sanitized, E, Insecure: SanitizeValue<Sanitized, Error = E>> SanitizeValue<Sanitized>
+    for UntrustedValue<Insecure>
+{
+    type Error = E;
+
+    /// Sanitizes the value.
+    ///
+    /// The returned value is sanitized and can be safely used.
+    /// If the value cannot be sanitized, an error must be returned.
+    fn sanitize_value(self) -> Result<Sanitized, Self::Error> {
+        self.value.sanitize_value()
     }
 }
 
@@ -268,3 +266,16 @@ impl<Insecure: Clone, Trusted: Clone> Clone for MaybeUntrusted<Insecure, Trusted
 }
 
 impl<Insecure: Copy, Trusted: Copy> Copy for MaybeUntrusted<Insecure, Trusted> {}
+
+impl<E, Insecure: SanitizeValue<Insecure, Error = E>> SanitizeValue<Insecure>
+    for MaybeUntrusted<Insecure, Insecure>
+{
+    type Error = E;
+
+    fn sanitize_value(self) -> Result<Insecure, Self::Error> {
+        match self {
+            MaybeUntrusted::Ok(value) => Ok(value),
+            MaybeUntrusted::Untrusted(value) => value.sanitize_value(),
+        }
+    }
+}

@@ -24,8 +24,6 @@ fn main() {
     };
     let user_input_from_config = user_input_from_config.to_untrusted_variant();
 
-    //let clone = user_input_from_config.clone();
-
     let _value = user_input_from_config
         .sanitize_with(|value| {
             Ok::<NetworkConfig, ()>(NetworkConfig {
