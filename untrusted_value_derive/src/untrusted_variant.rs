@@ -46,7 +46,7 @@ fn impl_untrusted_variant_of_struct(
         let field_type = &f.ty;
         let visibility = &f.vis;
         quote! {
-            #visibility #field_name: untrusted_value::UntrustedValue<#field_type>,
+            #visibility #field_name: ::untrusted_value::UntrustedValue<#field_type>,
         }
     });
 
@@ -127,7 +127,7 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
                 let field_names = fields_named.named.iter().map(|f| &f.ident);
                 quote! {
                     #(
-                        #field_names: untrusted_value::UntrustedValue::from(copy.#field_names),
+                        #field_names: ::untrusted_value::UntrustedValue::from(copy.#field_names),
                     )*
                 }
             }
@@ -135,7 +135,7 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
                 let indices = 0..fields_unnamed.unnamed.len();
                 quote! {
                     #(
-                        untrusted_value::UntrustedValue::from(copy.#indices),
+                        ::untrusted_value::UntrustedValue::from(copy.#indices),
                     )*
                 }
             }
@@ -148,7 +148,7 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
 
     quote! {
         #[automatically_derived]
-        impl #impl_generics untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics, #name #ty_generics> for #name #ty_generics #where_clause {
+        impl #impl_generics ::untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics, #name #ty_generics> for #name #ty_generics #where_clause {
             fn to_untrusted_variant(self) -> #new_struct_name #ty_generics {
                 let copy = self;
                 #new_struct_name {
@@ -158,7 +158,7 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
         }
 
         #[automatically_derived]
-        impl #impl_generics untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics, #name #ty_generics> for untrusted_value::UntrustedValue<#name #ty_generics> #where_clause {
+        impl #impl_generics ::untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics, #name #ty_generics> for ::untrusted_value::UntrustedValue<#name #ty_generics> #where_clause {
             fn to_untrusted_variant(self) -> #new_struct_name #ty_generics {
                 fn no_sanitize<T>(value: T) -> Result<T, ()> {
                     Ok(value)
@@ -178,7 +178,7 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
         }
 
         #[automatically_derived]
-        impl #impl_generics untrusted_value::SanitizeWith<#new_struct_name #ty_generics, #name #ty_generics> for #new_struct_name #ty_generics #where_clause {
+        impl #impl_generics ::untrusted_value::SanitizeWith<#new_struct_name #ty_generics, #name #ty_generics> for #new_struct_name #ty_generics #where_clause {
             fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<#name #ty_generics, Error>
             where
                 Sanitizer: FnOnce(Self) -> Result<#name #ty_generics, Error>

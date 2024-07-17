@@ -29,7 +29,7 @@ pub fn impl_untrusted_inputs(item: TokenStream) -> TokenStream {
         .map(|arg| {
             let arg = &arg.pat;
             quote! {
-                let #arg = untrusted_value::UntrustedValue::from(#arg);
+                let #arg = ::untrusted_value::UntrustedValue::from(#arg);
             }
         });
 

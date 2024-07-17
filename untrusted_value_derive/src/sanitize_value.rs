@@ -35,7 +35,7 @@ pub fn impl_sanitize_value_custom(params: SanitizeValueCustomParameters) -> Toke
         let field_type = &f.field_type;
         let new_field_type = &f.field_target_type;
         quote! {
-            #field_type: untrusted_value::SanitizeValue<#new_field_type, Error = E_UNTRUSTED>,
+            #field_type: ::untrusted_value::SanitizeValue<#new_field_type, Error = E_UNTRUSTED>,
         }
     });
 
@@ -106,7 +106,7 @@ pub fn impl_sanitize_value_custom(params: SanitizeValueCustomParameters) -> Toke
 
     quote! {
         #[automatically_derived]
-        impl #impl_generics untrusted_value::SanitizeValue<#struct_type_target #ty_generics> for #struct_type #ty_generics #where_clause {
+        impl #impl_generics ::untrusted_value::SanitizeValue<#struct_type_target #ty_generics> for #struct_type #ty_generics #where_clause {
             type Error = E_UNTRUSTED;
             fn sanitize_value(self) -> Result<#struct_type_target #ty_generics, Self::Error> {
                 #create_struct
