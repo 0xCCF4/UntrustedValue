@@ -75,7 +75,7 @@ pub fn impl_sanitize_value_custom(params: SanitizeValueCustomParameters) -> Toke
             let mutate_fields = fields.iter().map(|f| {
                 let field_name = f.field_name;
                 quote! {
-                    let #field_name = self.#field_name.sanitize_value(),
+                    let #field_name = self.#field_name.sanitize_value();
                 }
             });
 
