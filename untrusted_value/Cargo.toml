@@ -5,8 +5,8 @@ edition = "2021"
 readme = "../README.md"
 keywords = ["security", "sanitization", "validation", "taint", "static-analyis"]
 license = "MIT"
-homepage = "https://github.com/0xCCF4/UntrustedValues"
-repository = "https://github.com/0xCCF4/UntrustedValues"
+homepage = "https://github.com/0xCCF4/UntrustedValue"
+repository = "https://github.com/0xCCF4/UntrustedValue"
 documentation = "https://docs.rs/untrusted_value"
 description = """This crate aim to provide a type-safe way to handle and sanitize potentially untrusted values
 like user input."""
