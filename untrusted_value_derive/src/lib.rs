@@ -12,7 +12,7 @@ use syn::{Data, Field, Fields};
 /// An instance of a struct like this:
 /// ```rust
 /// # use untrusted_value_derive::UntrustedVariant;
-/// use untrusted_value::IntoUntrustedVariant;
+/// use untrusted_value::{IntoUntrustedVariant, SanitizeWith};
 ///
 /// #[derive(UntrustedVariant)]
 /// pub struct Example {
@@ -125,8 +125,9 @@ pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
 /// use untrusted_value_derive::untrusted_inputs;
 ///
 /// #[untrusted_inputs]
-/// fn index(name: &str) {
-///     /// some logic
+/// fn index(name: &str) -> () {
+///     // some logic
+///     ()
 /// }
 /// ```
 /// Will be converted into:
@@ -134,9 +135,10 @@ pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
 /// use untrusted_value::UntrustedValue;
 /// use untrusted_value_derive::untrusted_inputs;
 ///
-/// fn index(name: &str) {
+/// fn index(name: &str) -> () {
 ///     let name = UntrustedValue::from(name);
-///     /// some logic
+///     // some logic
+///     ()
 /// }
 /// ```
 ///
