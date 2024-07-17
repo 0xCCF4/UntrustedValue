@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value-v0.2.0...untrusted_value-v0.2.1) - 2024-07-17
+
+### Fixed
+- *(doc)* fixed github repo url
+
 ## [0.2.0](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value-v0.1.3...untrusted_value-v0.2.0) - 2024-07-17
 
 ### Added
