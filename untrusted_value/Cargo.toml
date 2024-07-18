@@ -1,6 +1,6 @@
 [package]
 name = "untrusted_value"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 readme = "../README.md"
 keywords = ["security", "sanitization", "validation", "taint", "static-analyis"]
@@ -12,8 +12,8 @@ description = """This crate aim to provide a type-safe way to handle and sanitiz
 like user input."""
 
 [dependencies]
-untrusted_value_derive = { version = "0.2.1", optional = true, path = "../untrusted_value_derive"}
-untrusted_value_derive_internals = { version = "0.2.1", path = "../untrusted_value_derive_internals"}
+untrusted_value_derive = { version = "0.2.2", optional = true, path = "../untrusted_value_derive"}
+untrusted_value_derive_internals = { version = "0.2.2", path = "../untrusted_value_derive_internals"}
 
 [features]
 allow_usage_without_sanitization = []
