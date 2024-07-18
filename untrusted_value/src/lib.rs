@@ -35,9 +35,9 @@
 //! ```rust
 //! pub use untrusted_value::{IntoUntrustedVariant, SanitizeValue};
 //! use untrusted_value::UntrustedValue;
-//! pub use untrusted_value_derive::UntrustedVariant;
+//! pub use untrusted_value::derive::UntrustedVariant;
 //!
-//! use untrusted_value_derive_internals::SanitizeWith;
+//! use untrusted_value::SanitizeWith;
 //!
 //! #[derive(UntrustedVariant)]
 //! #[untrusted_derive(Clone)] // tainted variant should be Cloneable
@@ -80,8 +80,8 @@
 //! the macro `untrusted_inputs` may be used to taint the function inputs:
 //!
 //! ```rust
-//! use untrusted_value_derive::untrusted_inputs;
-//! use untrusted_value_derive_internals::SanitizeWith;
+//! use untrusted_value::derive::untrusted_inputs;
+//! use untrusted_value::derive_internals::SanitizeWith;
 //! #
 //! # fn no_sanitize<T>(value: T) -> Result<T, ()>{
 //! #    Ok(value)
@@ -147,6 +147,13 @@
 #![warn(missing_docs)]
 
 pub use untrusted_value_derive_internals::*;
+
+/// Contains all proc macros utilities to help handling tainted values.
+/// For a detailed documentation, see documentation of each macro.
+#[cfg(feature = "derive")]
+pub mod derive {
+    pub use untrusted_value_derive::*;
+}
 
 mod untrusted_value;
 pub use untrusted_value::*;

@@ -1,5 +1,5 @@
-use untrusted_value_derive::untrusted_inputs;
-use untrusted_value_derive_internals::SanitizeWith;
+use untrusted_value::derive::untrusted_inputs;
+use untrusted_value::SanitizeWith;
 
 fn no_sanitize<T>(value: T) -> Result<T, ()> {
     Ok(value)

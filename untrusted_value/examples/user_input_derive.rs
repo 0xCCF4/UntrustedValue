@@ -1,5 +1,5 @@
+use untrusted_value::derive::UntrustedVariant;
 use untrusted_value::{IntoUntrustedVariant, SanitizeWith};
-use untrusted_value_derive::UntrustedVariant;
 
 #[derive(UntrustedVariant)]
 pub struct NetworkConfig {

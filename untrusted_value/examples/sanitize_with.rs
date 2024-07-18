@@ -1,6 +1,5 @@
 /// Sanitize a value using the sanitize_with function
-use untrusted_value::UntrustedValue;
-use untrusted_value_derive_internals::SanitizeWith;
+use untrusted_value::{SanitizeWith, UntrustedValue};
 
 fn main() {
     let user_input: i32 = -36;

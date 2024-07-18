@@ -1,5 +1,5 @@
+use untrusted_value::derive::UntrustedVariant;
 use untrusted_value::{IntoUntrustedVariant, SanitizeValue, SanitizeWith, UntrustedValue};
-use untrusted_value_derive::UntrustedVariant;
 
 // note:
 // - trusted version: support debugs

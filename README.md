@@ -36,7 +36,7 @@ When user data is a struct of different subtypes:
 
 ```rust
 pub use untrusted_value::{IntoUntrustedVariant, SanitizeValue};
-pub use untrusted_value_derive::UntrustedVariant;
+pub use untrusted_value::derive::UntrustedVariant;
 
 #[derive(UntrustedVariant)]
 #[untrusted_derive(Clone)] // tainted variant of NetworkConfig should be Cloneable
@@ -72,7 +72,7 @@ fn index(name: &str) -> Result<String, ()> {
     // wrapped in an UntrustedValue
 
     // we must explicitly sanitize the value before usage
-    let name = name.sanitize_with(no_sanitize)?;
+    let name = name.sanitize_with(/* func */)?;
     Ok(format!("Hello, {}!", name))
 }
 ```

@@ -1,7 +1,7 @@
+use untrusted_value::derive::untrusted_inputs;
+use untrusted_value::derive::UntrustedVariant;
+use untrusted_value::SanitizeWith;
 use untrusted_value::{IntoUntrustedVariant, SanitizeValue, UntrustedValue};
-use untrusted_value_derive::untrusted_inputs;
-use untrusted_value_derive::UntrustedVariant;
-use untrusted_value_derive_internals::SanitizeWith;
 
 // note:
 // - trusted version: support debugs

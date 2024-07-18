@@ -1,3 +1,12 @@
+//! This crate contains the proc macro definitions for the [untrusted_value](https://docs.rs/untrusted_value/latest/untrusted_value/)
+//! crate.
+//!
+//! All proc macros are reexported in the [untrusted_value](https://docs.rs/untrusted_value/latest/untrusted_value/) crate, so
+//! you should properly use that crate instead.
+//!
+//! See also the main repo at https://github.com/0xCCF4/UntrustedValue
+#![warn(missing_docs)]
+
 extern crate proc_macro;
 
 use crate::require_tainting::TaintChecker;
@@ -14,7 +23,7 @@ use syn::{Data, Field, Fields};
 ///
 /// An instance of a struct like this:
 /// ```rust
-/// # use untrusted_value_derive::UntrustedVariant;
+/// # use untrusted_value::derive::UntrustedVariant;
 /// use untrusted_value::{IntoUntrustedVariant, SanitizeWith};
 ///
 /// #[derive(UntrustedVariant)]
@@ -50,7 +59,7 @@ use syn::{Data, Field, Fields};
 /// When the struct is read from the configuration file, it is values are untrusted.
 /// ```rust
 /// pub use untrusted_value::{IntoUntrustedVariant, SanitizeWith};
-/// pub use untrusted_value_derive::UntrustedVariant;
+/// pub use untrusted_value::derive::UntrustedVariant;
 ///
 /// #[derive(UntrustedVariant, Clone, Debug)] // safe version: is cloneable and debuggable
 /// #[untrusted_derive(Clone)] // untrusted version: is cloneable, but not debuggable!
@@ -125,7 +134,7 @@ pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
 ///
 /// A function with the following signature:
 /// ```rust
-/// use untrusted_value_derive::untrusted_inputs;
+/// use untrusted_value::derive::untrusted_inputs;
 ///
 /// #[untrusted_inputs]
 /// fn index(name: &str) -> () {
@@ -136,7 +145,7 @@ pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
 /// Will be converted into:
 /// ```rust
 /// use untrusted_value::UntrustedValue;
-/// use untrusted_value_derive::untrusted_inputs;
+/// use untrusted_value::derive::untrusted_inputs;
 ///
 /// fn index(name: &str) -> () {
 ///     let name = UntrustedValue::from(name);
