@@ -114,7 +114,7 @@
 //! ## Features
 //! Enabled by default:
 //!  * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to just use clear the taint of a value.
-//!  * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`, `#[untrusted_inputs]`)
+//!  * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`, `#[untrusted_inputs]`, `#[require_tainting]`)
 //!
 //! Optional features:
 //!  * `derive_harden_sanitize`: enables hardening for the derive macro `SanitizeValue`. When this feature is disabled, the

@@ -1,8 +1,11 @@
 extern crate proc_macro;
 
+use crate::require_tainting::TaintChecker;
 use proc_macro::TokenStream;
+use quote::ToTokens;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
+use syn::visit::Visit;
 use syn::{Data, Field, Fields};
 
 /// This macro can be used to annotate struct that contains data that
@@ -151,6 +154,60 @@ pub fn untrusted_inputs(_attr: TokenStream, item: TokenStream) -> TokenStream {
     untrusted_inputs::impl_untrusted_inputs(item.into()).into()
 }
 
+/// # This macro is still in development
+///
+/// This macro can be used to annotate modules/functions/blocks.
+/// It will check if it finds any known patterns where tainting should be applied.
+/// If the developer did not apply tainting a compile error is thrown.
+///
+/// This macro does not propagate taint from a pattern further than
+/// the next access to the variable where the result of a found pattern
+/// is stored.
+///
+/// # Examples
+/// ```ignore
+/// #[require_taint]
+/// fn test() {
+///     let var = std::env::args().next();
+///         // ...
+///         // Macro would have expected, something like
+///         //  let var = UntrustedValue::from(var);
+///         // or
+///         //  let var: UntrustedValue<...> = var.into()
+///         // ...
+///     println!("{}", var); // <-- Macro will raise a compile error here
+/// }
+/// ```
+///
+/// # Ignore a found taint pattern
+/// Annotate the taint generating block/function/pattern with
+/// the macro [ignore_tainting]
+///
+/// # Detection features
+/// Detection patterns can be enabled by enabling the following features:
+/// - `require_taint_all`: Enable all pattern
+/// - `require_taint_`some_feature: Some_feature
+///
+/// # Limitations
+/// This macro does not guarantee that all taint sources are identified.
+#[proc_macro_attribute]
+pub fn require_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let ast: syn::File = syn::parse(item).expect("Failed to parse input");
+    let mut checker = TaintChecker::default();
+
+    checker.visit_file(&ast);
+
+    ast.into_token_stream().into()
+}
+
+/// See [require_tainting].
+///
+/// Ignores the found taint source pattern.
+#[proc_macro_attribute]
+pub fn ignore_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
 fn extract_struct_fields_from_ast(ast: &syn::DeriveInput) -> &Punctuated<Field, Comma> {
     match &ast.data {
         Data::Struct(data_struct) => match &data_struct.fields {
@@ -162,6 +219,7 @@ fn extract_struct_fields_from_ast(ast: &syn::DeriveInput) -> &Punctuated<Field, 
     }
 }
 
+mod require_tainting;
 mod sanitize_value;
 mod untrusted_inputs;
 mod untrusted_variant;
