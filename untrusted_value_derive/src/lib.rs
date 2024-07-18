@@ -4,7 +4,7 @@
 //! All proc macros are reexported in the [untrusted_value](https://docs.rs/untrusted_value/latest/untrusted_value/) crate, so
 //! you should properly use that crate instead.
 //!
-//! See also the main repo at https://github.com/0xCCF4/UntrustedValue
+//! See also the main repo at [https://github.com/0xCCF4/UntrustedValue](https://github.com/0xCCF4/UntrustedValue).
 #![warn(missing_docs)]
 
 extern crate proc_macro;
@@ -18,7 +18,7 @@ use syn::visit::Visit;
 use syn::{Data, Field, Fields};
 
 /// This macro can be used to annotate struct that contains data that
-/// might be untrusted. The macro will generate a new struct that wraps
+/// might be untrusted. The macro will generate a new struct that resembles
 /// the original struct, but all fields will be wrapped in `untrusted_value::UntrustedValue`.
 ///
 /// An instance of a struct like this:
@@ -163,11 +163,56 @@ pub fn untrusted_inputs(_attr: TokenStream, item: TokenStream) -> TokenStream {
     untrusted_inputs::impl_untrusted_inputs(item.into()).into()
 }
 
-/// # This macro is still in development
+/// This macro can be used to annotate functions to automatically wrap the
+/// function output as `UntrustedValue<ReturnType>`.
 ///
+/// A function with the following signature:
+/// ```rust
+/// # use untrusted_value::derive::untrusted_output;
+/// #
+/// #[untrusted_output]
+/// fn index() -> String {
+///    "Hello World".to_string()
+/// }
+/// ```
+///
+/// Will be converted into:
+/// ```rust
+/// # use untrusted_value::UntrustedValue;
+/// #
+/// fn index() -> UntrustedValue<String> {
+///     UntrustedValue::from(
+///         // original function body
+///         // ...
+///         # "Hello World".to_string()
+///     )
+/// }
+/// ```
+///
+/// This macro is useful when one writes a library function that provides untrusted data.
+/// Since a library user might not want to use the untrusted data crate. That function can
+/// be annotated with
+/// ```rust
+/// # use untrusted_value::derive::untrusted_output;
+/// #
+/// #[cfg_attr(feature = "some_feature", untrusted_output)]
+/// fn some_lib_func() -> String {
+///     "abcdef".to_string()
+/// }
+/// ```
+/// such that a normal library user can use the function without caring about tainted data.
+/// When enabling the feature `some_feature` the function output is wrapped in `UntrustedValue`
+/// and marked as tainted.
+#[proc_macro_attribute]
+pub fn untrusted_output(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    untrusted_output::impl_untrusted_output(item.into()).into()
+}
+
 /// This macro can be used to annotate modules/functions/blocks.
 /// It will check if it finds any known patterns where tainting should be applied.
 /// If the developer did not apply tainting a compile error is thrown.
+///
+/// This macro is still in development
 ///
 /// This macro does not propagate taint from a pattern further than
 /// the next access to the variable where the result of a found pattern
@@ -190,7 +235,7 @@ pub fn untrusted_inputs(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// # Ignore a found taint pattern
 /// Annotate the taint generating block/function/pattern with
-/// the macro [ignore_tainting]
+/// the macro #[ignore_tainting]
 ///
 /// # Detection features
 /// Detection patterns can be enabled by enabling the following features:
@@ -209,9 +254,7 @@ pub fn require_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ast.into_token_stream().into()
 }
 
-/// See [require_tainting].
-///
-/// Ignores the found taint source pattern.
+/// Ignores the found taint source pattern. See the macro #[require_tainting].
 #[proc_macro_attribute]
 pub fn ignore_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
