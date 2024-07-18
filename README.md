@@ -11,6 +11,12 @@ upon the tainted data, clearing its taint.
 This crate introduces several data types, traits and macros to simplify the process
 of taint tracking.
 
+## What's the goal of this crate?
+The goal of this crate is to help design more secure applications. By tainting all
+program inputs, unsanitized data can not be used by accident. By providing a sanitizing
+interface to tainted data, security analysis can focus on analysing the implemented sanitizing functions
+instead of identifying where tainted data is located, and where it is used.
+
 ## Example usage
 User data must be wrapped within the container `UntrustedValue` which
 provides/marks the contained data as tainted.
@@ -82,7 +88,7 @@ cargo add untrusted-value
 ## Features
 Enabled by default:
  * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to just use clear the taint of a value.
- * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`)
+ * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`, `#[untrusted_inputs]`)
 
 Optional features:
  * `derive_harden_sanitize`: enables hardening for the derive macro `SanitizeValue`. When this feature is disabled, the
@@ -95,6 +101,12 @@ Providing a taint tracking system is nice but still requires the developer to
 taint the data properly. Currently, we are working on providing a crate level macro
 to automatically check common taint source like input from environment variables, args, and
 common frameworks, that will create a compile error if input data has not been tainted.
+
+This crate does only provide an interface to taint and sanitize data. Using this system, still this does
+not make an application inherently secure. The developer must still implement
+appropriate sanitizing functions to clear the taint of the data. This unified
+interface should help to focus security analysis on the sanitizing functions
+instead of on potentially all places where tainted data might be used.
 
 ## Contribution
 Contributions to the project are welcome! If you have a feature request,

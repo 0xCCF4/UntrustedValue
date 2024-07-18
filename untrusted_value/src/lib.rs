@@ -114,7 +114,7 @@
 //! ## Features
 //! Enabled by default:
 //!  * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to just use clear the taint of a value.
-//!  * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`)
+//!  * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`, `#[untrusted_inputs]`)
 //!
 //! Optional features:
 //!  * `derive_harden_sanitize`: enables hardening for the derive macro `SanitizeValue`. When this feature is disabled, the
@@ -122,11 +122,23 @@
 //!     channels are a concern. When enabling this feature, first all sanitizers are run, then
 //!     the first error is propagated.
 //!
+//! ## What's the goal of this crate?
+//! The goal of this crate is to help design more secure applications. By tainting all
+//! program inputs, unsanitized data can not be used by accident. By providing a sanitizing
+//! interface to tainted data, security analysis can focus on analysing the implemented sanitizing functions
+//! instead of identifying where tainted data is located, and where it is used.
+//!
 //! ## Limitations
 //! Providing a taint tracking system is nice but still requires the developer to
 //! taint the data properly. Currently, we are working on providing a crate level macro
 //! to automatically check common taint source like input from environment variables, args, and
 //! common frameworks, that will create a compile error if input data has not been tainted.
+//!
+//! This crate does only provide an interface to taint and sanitize data. Using this system, still this does
+//! not make an application inherently secure. The developer must still implement
+//! appropriate sanitizing functions to clear the taint of the data. This unified
+//! interface should help to focus security analysis on the sanitizing functions
+//! instead of on potentially all places where tainted data might be used.
 //!
 //! ## Contribution
 //! Contributions to the project are welcome! If you have a feature request,
@@ -136,179 +148,8 @@
 
 pub use untrusted_value_derive_internals::*;
 
-/// Represents an untrusted/untrustworthy value.
-///
-/// An attacker might be able to control (part) of the returned value.
-/// Take special care processing this data.
-///
-/// See the method documentation of the function returning this value
-pub struct UntrustedValue<Insecure> {
-    value: Insecure,
-}
+mod untrusted_value;
+pub use untrusted_value::*;
 
-impl<Insecure> UntrustedValue<Insecure> {
-    /// Be sure that you carefully handle the returned value since
-    /// it may be controllable by a malicious actor.
-    ///
-    /// See the method documentation of the function returning this value
-    #[cfg(feature = "allow_usage_without_sanitization")]
-    pub fn use_untrusted_value(self) -> Insecure {
-        self.value
-    }
-
-    /// Wraps the provided value as [UntrustedValue]
-    pub fn wrap(value: Insecure) -> Self {
-        UntrustedValue { value }
-    }
-}
-
-// does explicitly not implement Debug, Display, etc. to avoid processing untrusted data
-// if desired, implement these traits manually for UntrustedValue<SomeCustomType>
-
-impl<Insecure, Trusted> SanitizeWith<Insecure, Trusted> for UntrustedValue<Insecure> {
-    /// Sanitizes the value using the provided sanitizer.
-    ///
-    /// The sanitizer may transmute the value to a different type.
-    /// If sanitization fails, an error must be returned.
-    fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<Trusted, Error>
-    where
-        Sanitizer: FnOnce(Insecure) -> Result<Trusted, Error>,
-    {
-        sanitizer(self.value)
-    }
-}
-
-impl<Insecure> From<Insecure> for UntrustedValue<Insecure> {
-    /// Wraps the provided value as [UntrustedValue]
-    fn from(value: Insecure) -> Self {
-        UntrustedValue::wrap(value)
-    }
-}
-
-impl<Insecure: Clone> Clone for UntrustedValue<Insecure> {
-    /// Clones the value
-    fn clone(&self) -> Self {
-        Self {
-            value: self.value.clone(),
-        }
-    }
-}
-
-impl<Sanitized, E, Insecure: SanitizeValue<Sanitized, Error = E>> SanitizeValue<Sanitized>
-    for UntrustedValue<Insecure>
-{
-    type Error = E;
-
-    /// Sanitizes the value.
-    ///
-    /// The returned value is sanitized and can be safely used.
-    /// If the value cannot be sanitized, an error must be returned.
-    fn sanitize_value(self) -> Result<Sanitized, Self::Error> {
-        self.value.sanitize_value()
-    }
-}
-
-impl<Insecure: Copy> Copy for UntrustedValue<Insecure> {}
-
-/// Represents a value that might be untrusted. See UntrustedValue for more information.
-pub enum MaybeUntrusted<Insecure, Trusted = Insecure> {
-    /// Trusted value variant
-    Ok(Trusted),
-    /// Untrusted value variant
-    Untrusted(UntrustedValue<Insecure>),
-}
-
-impl<Insecure> MaybeUntrusted<Insecure, Insecure> {
-    /// Be sure that you carefully handle the returned value since
-    /// it may be controllable by a malicious actor (when it is a MaybeUntrusted::Untrusted).
-    ///
-    /// See the method documentation of the function returning this value
-    #[cfg(feature = "allow_usage_without_sanitization")]
-    pub fn use_untrusted_value(self) -> Insecure {
-        match self {
-            MaybeUntrusted::Ok(value) => value,
-            MaybeUntrusted::Untrusted(value) => value.use_untrusted_value(),
-        }
-    }
-
-    /// Wraps the provided value as maybe untrusted, according to given boolean
-    pub fn wrap(value: Insecure, untrusted: bool) -> Self {
-        match untrusted {
-            true => Self::wrap_untrusted(value),
-            false => Self::wrap_ok(value),
-        }
-    }
-}
-
-impl<Insecure, Trusted> MaybeUntrusted<Insecure, Trusted> {
-    /// Returns true if the value is untrusted
-    pub fn is_untrusted(&self) -> bool {
-        match self {
-            MaybeUntrusted::Ok(_) => false,
-            MaybeUntrusted::Untrusted(_) => true,
-        }
-    }
-
-    /// Returns true if the value is not untrusted
-    pub fn is_ok(&self) -> bool {
-        !self.is_untrusted()
-    }
-
-    /// Wraps the provided values as Untrusted
-    pub fn wrap_untrusted(value: Insecure) -> Self {
-        MaybeUntrusted::Untrusted(value.into())
-    }
-
-    /// Wraps the provided values as Ok
-    pub fn wrap_ok(value: Trusted) -> Self {
-        MaybeUntrusted::Ok(value)
-    }
-}
-
-impl<Insecure, Trusted> SanitizeWith<Insecure, Trusted> for MaybeUntrusted<Insecure, Trusted> {
-    /// Sanitizes the value using the provided sanitizer if the value is untrusted.
-    ///
-    /// The sanitizer may transmute the value to a different type.
-    /// If sanitization fails, an error must be returned.
-    fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<Trusted, Error>
-    where
-        Sanitizer: FnOnce(Insecure) -> Result<Trusted, Error>,
-    {
-        match self {
-            MaybeUntrusted::Ok(value) => Ok(value),
-            MaybeUntrusted::Untrusted(value) => value.sanitize_with(sanitizer),
-        }
-    }
-}
-
-impl<Insecure, Trusted> From<UntrustedValue<Insecure>> for MaybeUntrusted<Insecure, Trusted> {
-    /// Converts an [UntrustedValue] to a [MaybeUntrusted] value
-    fn from(value: UntrustedValue<Insecure>) -> Self {
-        MaybeUntrusted::Untrusted(value)
-    }
-}
-
-impl<Insecure: Clone, Trusted: Clone> Clone for MaybeUntrusted<Insecure, Trusted> {
-    /// Clones the value
-    fn clone(&self) -> Self {
-        match self {
-            MaybeUntrusted::Ok(value) => MaybeUntrusted::Ok(value.clone()),
-            MaybeUntrusted::Untrusted(value) => MaybeUntrusted::Untrusted(value.clone()),
-        }
-    }
-}
-
-impl<Insecure: Copy, Trusted: Copy> Copy for MaybeUntrusted<Insecure, Trusted> {}
-
-impl<E, Insecure: SanitizeValue<Insecure, Error = E>> SanitizeValue<Insecure>
-    for MaybeUntrusted<Insecure, Insecure>
-{
-    type Error = E;
-
-    fn sanitize_value(self) -> Result<Insecure, Self::Error> {
-        match self {
-            MaybeUntrusted::Ok(value) => Ok(value),
-            MaybeUntrusted::Untrusted(value) => value.sanitize_value(),
-        }
-    }
-}
+mod maybe_untrusted;
+pub use maybe_untrusted::*;
