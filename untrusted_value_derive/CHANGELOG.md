@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive-v0.2.2...untrusted_value_derive-v0.2.3) - 2024-07-18
+
+### Other
+- all types are reexported in the untrsuted_value crate, to use derive macros just the main crate needs to be imported
+
 ## [0.2.2](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive-v0.2.1...untrusted_value_derive-v0.2.2) - 2024-07-18
 
 ### Added
