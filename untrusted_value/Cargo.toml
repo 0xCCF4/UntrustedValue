@@ -19,5 +19,6 @@ untrusted_value_derive_internals = { version = "0.2.3", path = "../untrusted_val
 allow_usage_without_sanitization = []
 derive = [ "dep:untrusted_value_derive" ]
 derive_harden_sanitize = [ "derive", "untrusted_value_derive/harden_sanitize" ]
-require_taint_all = ["derive"]
 default = ["allow_usage_without_sanitization", "derive"]
+
+# check_taint_all = ["derive", ...]

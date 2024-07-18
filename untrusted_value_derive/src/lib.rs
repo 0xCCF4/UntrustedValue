@@ -14,7 +14,6 @@ use proc_macro::TokenStream;
 use quote::ToTokens;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
-use syn::visit::Visit;
 use syn::{Data, Field, Fields};
 
 /// This macro can be used to annotate struct that contains data that
@@ -134,27 +133,27 @@ pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
 ///
 /// A function with the following signature:
 /// ```rust
-/// use untrusted_value::derive::untrusted_inputs;
-///
+/// # use untrusted_value::derive::untrusted_inputs;
+/// #
 /// #[untrusted_inputs]
 /// fn index(name: &str) -> () {
 ///     // some logic
-///     ()
+/// #   ()
 /// }
 /// ```
 /// Will be converted into:
 /// ```rust
-/// use untrusted_value::UntrustedValue;
-/// use untrusted_value::derive::untrusted_inputs;
-///
+/// # use untrusted_value::UntrustedValue;
+/// # use untrusted_value::derive::untrusted_inputs;
+/// #
 /// fn index(name: &str) -> () {
 ///     let name = UntrustedValue::from(name);
 ///     // some logic
-///     ()
+/// #   ()
 /// }
 /// ```
 ///
-/// This prevents the logic from using the tainted function inputs without proper sanitation.
+/// This prevents the logic from using the tainted function inputs without proper sanitization.
 ///
 /// This macro should be put at any binary entry points. Like when using a webserver the functions
 /// handling a specific web request.
@@ -212,11 +211,14 @@ pub fn untrusted_output(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// It will check if it finds any known patterns where tainting should be applied.
 /// If the developer did not apply tainting a compile error is thrown.
 ///
-/// This macro is still in development
-///
 /// This macro does not propagate taint from a pattern further than
 /// the next access to the variable where the result of a found pattern
 /// is stored.
+///
+/// This macro does not modify the source code.
+///
+/// Currently, the macro does nothing, this might change in the future.
+/// Feel free to implement and pull request checkers.
 ///
 /// # Examples
 /// ```ignore
@@ -239,17 +241,17 @@ pub fn untrusted_output(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// # Detection features
 /// Detection patterns can be enabled by enabling the following features:
-/// - `require_taint_all`: Enable all pattern
-/// - `require_taint_`some_feature: Some_feature
+/// - `check_taint_all`: Enable all pattern
+/// - `check_taint_`some_feature: Some_feature
 ///
 /// # Limitations
 /// This macro does not guarantee that all taint sources are identified.
 #[proc_macro_attribute]
 pub fn require_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: syn::File = syn::parse(item).expect("Failed to parse input");
-    let mut checker = TaintChecker::default();
+    let checker = TaintChecker::default();
 
-    checker.visit_file(&ast);
+    checker.process_file(&ast);
 
     ast.into_token_stream().into()
 }
@@ -274,4 +276,5 @@ fn extract_struct_fields_from_ast(ast: &syn::DeriveInput) -> &Punctuated<Field, 
 mod require_tainting;
 mod sanitize_value;
 mod untrusted_inputs;
+mod untrusted_output;
 mod untrusted_variant;

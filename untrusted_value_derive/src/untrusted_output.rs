@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{parse_quote, ItemFn, ReturnType};
 
 pub fn impl_untrusted_output(item: TokenStream) -> TokenStream {
@@ -12,8 +12,6 @@ pub fn impl_untrusted_output(item: TokenStream) -> TokenStream {
         mut sig,
         block,
     } = input_fn;
-
-    println!("{}", sig.clone().output.into_token_stream());
 
     let output = match &sig.output {
         ReturnType::Default => panic!(

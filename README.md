@@ -5,7 +5,7 @@ like user input.
 It aims to provide compile-time [Taint checking](https://en.wikipedia.org/wiki/Taint_checking)
 into Rust. All user input or in general all input coming from the outside
 world into the program must be seen as untrusted and potentially malicious (called tainted).
-A tainted value keeps its taint until a proper sanitation function is called
+A tainted value keeps its taint until a proper sanitization function is called
 upon the tainted data, clearing its taint.
 
 This crate introduces several data types, traits and macros to simplify the process
@@ -77,6 +77,22 @@ fn index(name: &str) -> Result<String, ()> {
 }
 ```
 
+A library providing a function that returns untrusted data may use the macro `untrusted_output` to conditionally
+taint the output if the library user desires this:
+
+```rust
+#[cfg_attr(feature = "some_feature", untrusted_output)]
+pub fn query_database() -> String {
+    // if cfg matches, then use untrusted_output to wrap the
+    // function output in UntrustedValue
+
+    // the macro will wrap the body with:
+        // UntrustedValue::from(
+    "abcdef".to_string()
+        // )
+}
+```
+
 See also the examples in the `examples` directory.
 
 ## Installation
@@ -87,8 +103,8 @@ cargo add untrusted-value
 
 ## Features
 Enabled by default:
- * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to just use clear the taint of a value.
- * `derive`: enables the macros to automatically generate code (`#[derive(UntrustedVariant)`, `#[derive(SanitizeValue)`, `#[untrusted_inputs]`, `#[require_tainting]`)
+ * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to clear the taint of a value without sanitization
+ * `derive`: enables the macros to automatically generate code
 
 Optional features:
  * `derive_harden_sanitize`: enables hardening for the derive macro `SanitizeValue`. When this feature is disabled, the
