@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive-v0.2.3...untrusted_value_derive-v0.2.4) - 2024-07-18
+
+### Added
+- added the untrusted_output macro
+
+### Other
+- added documentation for untrusted_output
+
 ## [0.2.3](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive-v0.2.2...untrusted_value_derive-v0.2.3) - 2024-07-18
 
 ### Other
