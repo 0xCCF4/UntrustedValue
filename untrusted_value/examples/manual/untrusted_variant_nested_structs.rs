@@ -1,19 +1,19 @@
 use untrusted_value::derive::UntrustedVariant;
-use untrusted_value::{IntoUntrustedVariant, SanitizeValue, SanitizeWith, UntrustedValue};
+use untrusted_value::{IntoUntrustedVariant, SanitizeValue, UntrustedValue};
 
 // note:
 // - trusted version: support debugs
 // - untrusted version: does not support debugs, since it may be unsafe to print the values
 // Since all sub structs implement `SanitizeValue`, the unsafe version can
 // use the `SanitizeValue` macro to automatically implement the `SanitizeValue` trait.
-#[derive(UntrustedVariant, Debug)]
+#[derive(Debug, UntrustedVariant)] // <-- Implements `GeneralConfigUntrusted`
 #[untrusted_derive(Clone, SanitizeValue)]
 pub struct GeneralConfig {
     pub network: NetworkConfig,
     pub database: DatabaseConfig,
 }
 
-#[derive(UntrustedVariant, Clone, Debug)]
+#[derive(Clone, Debug, UntrustedVariant)] // <-- Implements `NetworkConfigUntrusted`
 #[untrusted_derive(Clone)]
 pub struct NetworkConfig {
     pub port: u32,
@@ -23,11 +23,16 @@ pub struct NetworkConfig {
 #[derive(Clone, Debug)]
 pub struct DatabaseConfig {}
 
+/// Sanitize the tainted version of `NetworkConfig`
 impl SanitizeValue<NetworkConfig> for UntrustedValue<NetworkConfig> {
     type Error = ();
 
     fn sanitize_value(self) -> Result<NetworkConfig, Self::Error> {
-        Ok(self.use_untrusted_value()) // do some sanitizing
+        let unpacked = self.use_untrusted_value().to_untrusted_variant();
+        Ok(NetworkConfig {
+            port: unpacked.port.use_untrusted_value(),
+            listen_address: unpacked.listen_address.use_untrusted_value(),
+        }) // in real application: do some sanitizing
     }
 }
 

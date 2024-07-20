@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_quote, ItemFn, ReturnType};
 
-pub fn impl_untrusted_output(item: TokenStream) -> TokenStream {
+pub fn impl_untrusted_output_macro(item: TokenStream) -> TokenStream {
     let input_fn: ItemFn =
         syn::parse2(item).expect("This macro can only be used on function declaration");
 

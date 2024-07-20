@@ -1,4 +1,4 @@
-/// Sanitize a value using the sanitize_with function
+/// Sanitize a value using the `sanitize_with` function
 use untrusted_value::{SanitizeWith, UntrustedValue};
 
 fn main() {
@@ -9,7 +9,7 @@ fn main() {
         .sanitize_with(|value| Ok::<u32, ()>(value.unsigned_abs()))
         .expect("Sanitization failed");
 
-    println!("Sanitized value: {:?}", trusted_value);
+    println!("Sanitized value: {trusted_value:?}");
 
     // OR
 
@@ -23,5 +23,5 @@ fn main() {
         })
         .expect("Sanitization failed");
 
-    println!("Sanitized value: {:?}", trusted_value);
+    println!("Sanitized value: {trusted_value:?}");
 }

@@ -1,6 +1,7 @@
 use untrusted_value::derive::untrusted_inputs;
 use untrusted_value::SanitizeWith;
 
+#[allow(clippy::unnecessary_wraps)]
 fn no_sanitize<T>(value: T) -> Result<T, ()> {
     Ok(value)
 }
@@ -13,7 +14,7 @@ fn index(name: &str) -> Result<String, ()> {
     // wrapped in an UntrustedValue
 
     let name = name.sanitize_with(no_sanitize)?;
-    Ok(format!("Hello, {}!", name))
+    Ok(format!("Hello, {name}!"))
 }
 
 fn main() {

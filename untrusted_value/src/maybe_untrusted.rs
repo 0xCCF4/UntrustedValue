@@ -1,7 +1,7 @@
 use super::UntrustedValue;
 use untrusted_value_derive_internals::{SanitizeValue, SanitizeWith};
 
-/// Represents a value that might be untrusted. See UntrustedValue for more information.
+/// Represents a value that might be untrusted. See `UntrustedValue` for more information.
 pub enum MaybeUntrusted<Insecure, Trusted = Insecure> {
     /// Trusted value variant
     Ok(Trusted),
@@ -9,7 +9,7 @@ pub enum MaybeUntrusted<Insecure, Trusted = Insecure> {
     Untrusted(UntrustedValue<Insecure>),
 }
 
-impl<Insecure> MaybeUntrusted<Insecure, Insecure> {
+impl<Insecure> MaybeUntrusted<Insecure> {
     /// Be sure that you carefully handle the returned value since
     /// it may be controllable by a malicious actor (when it is a MaybeUntrusted::Untrusted).
     ///
@@ -24,9 +24,10 @@ impl<Insecure> MaybeUntrusted<Insecure, Insecure> {
 
     /// Wraps the provided value as maybe untrusted, according to given boolean
     pub fn wrap(value: Insecure, untrusted: bool) -> Self {
-        match untrusted {
-            true => Self::wrap_untrusted(value),
-            false => Self::wrap_ok(value),
+        if untrusted {
+            Self::wrap_untrusted(value)
+        } else {
+            Self::wrap_ok(value)
         }
     }
 }
@@ -73,12 +74,13 @@ impl<Insecure, Trusted> SanitizeWith<Insecure, Trusted> for MaybeUntrusted<Insec
 }
 
 impl<Insecure, Trusted> From<UntrustedValue<Insecure>> for MaybeUntrusted<Insecure, Trusted> {
-    /// Converts an [UntrustedValue] to a [MaybeUntrusted] value
+    /// Converts an [`UntrustedValue`] to a [`MaybeUntrusted`] value
     fn from(value: UntrustedValue<Insecure>) -> Self {
         MaybeUntrusted::Untrusted(value)
     }
 }
 
+#[allow(clippy::expl_impl_clone_on_copy)]
 impl<Insecure: Clone, Trusted: Clone> Clone for MaybeUntrusted<Insecure, Trusted> {
     /// Clones the value
     fn clone(&self) -> Self {
@@ -92,7 +94,7 @@ impl<Insecure: Clone, Trusted: Clone> Clone for MaybeUntrusted<Insecure, Trusted
 impl<Insecure: Copy, Trusted: Copy> Copy for MaybeUntrusted<Insecure, Trusted> {}
 
 impl<E, Insecure: SanitizeValue<Insecure, Error = E>> SanitizeValue<Insecure>
-    for MaybeUntrusted<Insecure, Insecure>
+    for MaybeUntrusted<Insecure>
 {
     type Error = E;
 

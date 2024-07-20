@@ -1,4 +1,4 @@
-/// Sanitize a value using the SanitizeValue trait
+/// Sanitize a value using the `SanitizeValue` trait
 use untrusted_value::{SanitizeValue, UntrustedValue};
 
 struct UserDataType {

@@ -1,5 +1,7 @@
 use crate::extract_struct_fields_from_ast;
-use crate::sanitize_value::{impl_sanitize_value_custom, FieldInfo, SanitizeValueCustomParameters};
+use crate::sanitize_value::{
+    impl_sanitize_value_custom, FieldInfo, SanitizeValueMacroCustomParameters,
+};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::Parse;
@@ -28,7 +30,7 @@ impl Parse for Parameters {
 }
 
 fn convert_struct_name_to_untrusted_variant(name: &Ident) -> Ident {
-    Ident::new(&format!("{}Untrusted", name), name.span())
+    Ident::new(&format!("{name}Untrusted"), name.span())
 }
 
 fn impl_untrusted_variant_of_struct(
@@ -57,19 +59,20 @@ fn impl_untrusted_variant_of_struct(
             let field_type = &f.ty;
             let new_type = syn::parse_quote!(untrusted_value::UntrustedValue<#field_type>);
             FieldInfo {
-                field_name,
+                name: field_name,
                 field_type: new_type,
                 field_target_type: field_type.clone(),
             }
         })
         .collect();
 
-    let params = SanitizeValueCustomParameters {
-        struct_type: &new_struct_name,
-        struct_type_target: name,
+    let new_struct_type = syn::parse_quote!(#new_struct_name #ty_generics);
+    let struct_type = syn::parse_quote!(#name #ty_generics);
+    let params = SanitizeValueMacroCustomParameters {
+        struct_type: &new_struct_type,
+        struct_type_target: &struct_type,
         fields,
         impl_generics,
-        ty_generics: ty_generics.clone(),
         where_clause,
     };
 
@@ -78,7 +81,33 @@ fn impl_untrusted_variant_of_struct(
         .iter()
         .any(|d| d == "SanitizeValue");
     let sanitize_value_derive = if sanitize_value_derive {
-        impl_sanitize_value_custom(params)
+        let derive = impl_sanitize_value_custom(params);
+
+        let where_clause_with_error_bound = {
+            let prefix = if where_clause.is_none() {
+                quote! { where }
+            } else {
+                quote! { #where_clause, }
+            };
+            quote! {
+                #prefix #new_struct_name #ty_generics: ::untrusted_value::SanitizeValue<#name #ty_generics, Error = CommonSanitizationError>
+            }
+        };
+
+        quote! {
+            // UNTRUSTED STRUCT -> sanitize_value -> STRUCT
+            #derive
+
+            // UntrustedValue<STRUCT> -> sanitize_value -> STRUCT
+            //  by STRUCT -> into_untrusted_variant -> UNTRUSTED STRUCT -> sanitize_value -> STRUCT
+            #[automatically_derived]
+            impl<CommonSanitizationError> ::untrusted_value::SanitizeValue<#name #ty_generics> for ::untrusted_value::UntrustedValue<#name #ty_generics> #where_clause_with_error_bound {
+                type Error = CommonSanitizationError;
+                fn sanitize_value(self) -> Result<#name #ty_generics, Self::Error> {
+                    self.use_untrusted_value().to_untrusted_variant().sanitize_value()
+                }
+            }
+        }
     } else {
         quote! {}
     };
@@ -100,11 +129,13 @@ fn impl_untrusted_variant_of_struct(
             #(#modified_fields)*
         }
 
+        // UNTRUSTED STRUCT -> sanitize_value -> STRUCT
+        // UntrustedValue<STRUCT> -> sanitize_value -> STRUCT
         #sanitize_value_derive
     }
 }
 
-pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
+pub fn impl_untrusted_variant_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let new_struct_name = convert_struct_name_to_untrusted_variant(name);
 
@@ -112,22 +143,21 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
         .attrs
         .iter()
         .find(|a| a.path().segments.len() == 1 && a.path().segments[0].ident == "untrusted_derive")
-        .map(|attribute| match attribute.meta {
+        .map_or_else(Parameters::default, |attribute| match attribute.meta {
             Meta::List(ref meta) => parse2::<Parameters>(meta.tokens.clone())
                 .expect("Expected a list of traits to derive within #[untrusted_derive(...)]"),
             _ => Parameters::default(),
-        })
-        .unwrap_or_else(Parameters::default);
+        });
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-    let copy_fields = match &ast.data {
+    let fields_wrap_into_untrusted = match &ast.data {
         Data::Struct(data_struct) => match &data_struct.fields {
             Fields::Named(fields_named) => {
                 let field_names = fields_named.named.iter().map(|f| &f.ident);
                 quote! {
                     #(
-                        #field_names: ::untrusted_value::UntrustedValue::from(copy.#field_names),
+                        #field_names: ::untrusted_value::UntrustedValue::from(self.#field_names),
                     )*
                 }
             }
@@ -135,7 +165,30 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
                 let indices = 0..fields_unnamed.unnamed.len();
                 quote! {
                     #(
-                        ::untrusted_value::UntrustedValue::from(copy.#indices),
+                        ::untrusted_value::UntrustedValue::from(self.#indices),
+                    )*
+                }
+            }
+            Fields::Unit => quote! {},
+        },
+        _ => panic!("Only structs are supported"),
+    };
+
+    let fields_wrap_from_untrusted = match &ast.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(fields_named) => {
+                let field_names = fields_named.named.iter().map(|f| &f.ident);
+                quote! {
+                    #(
+                        #field_names: self.#field_names.use_untrusted_value(),
+                    )*
+                }
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                let indices = 0..fields_unnamed.unnamed.len();
+                quote! {
+                    #(
+                        self.#indices.use_untrusted_value(),
                     )*
                 }
             }
@@ -146,30 +199,45 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
 
     let untrusted_struct = impl_untrusted_variant_of_struct(&parameter, ast);
 
+    let sanitize_with = super::sanitize_with::impl_sanitize_with_custom(
+        &new_struct_name,
+        &ast.generics,
+        name,
+        &ast.generics,
+    );
+
     quote! {
+        // STRUCT -> into_untrusted_variant -> UNTRUSTED STRUCT
         #[automatically_derived]
-        impl #impl_generics ::untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics, #name #ty_generics> for #name #ty_generics #where_clause {
+        impl #impl_generics ::untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics> for #name #ty_generics #where_clause {
             fn to_untrusted_variant(self) -> #new_struct_name #ty_generics {
-                let copy = self;
                 #new_struct_name {
-                    #copy_fields
+                    #fields_wrap_into_untrusted
                 }
             }
         }
 
+        // UNTRUSTED STRUCT -> into_untrusted_variant -> UntrustedValue<STRUCT>
         #[automatically_derived]
-        impl #impl_generics ::untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics, #name #ty_generics> for ::untrusted_value::UntrustedValue<#name #ty_generics> #where_clause {
-            fn to_untrusted_variant(self) -> #new_struct_name #ty_generics {
-                fn no_sanitize<T>(value: T) -> Result<T, ()> {
-                    Ok(value)
-                }
-                let copy = self.sanitize_with(no_sanitize).unwrap();
-                #new_struct_name {
-                    #copy_fields
-                }
+        impl #impl_generics ::untrusted_value::IntoUntrustedVariant<::untrusted_value::UntrustedValue<#name #ty_generics>> for #new_struct_name #ty_generics #where_clause {
+            fn to_untrusted_variant(self) -> ::untrusted_value::UntrustedValue<#name #ty_generics> {
+                ::untrusted_value::UntrustedValue::from(
+                    #name {
+                        #fields_wrap_from_untrusted
+                    }
+                )
             }
         }
 
+        // UntrustedValue<STRUCT> -> into_untrusted_variant -> UNTRUSTED STRUCT
+        #[automatically_derived]
+        impl #impl_generics ::untrusted_value::IntoUntrustedVariant<#new_struct_name #ty_generics> for ::untrusted_value::UntrustedValue<#name #ty_generics> #where_clause {
+            fn to_untrusted_variant(self) -> #new_struct_name #ty_generics {
+                self.use_untrusted_value().to_untrusted_variant()
+            }
+        }
+
+        // STRUCT -> into -> UNTRUSTED STRUCT
         #[automatically_derived]
         impl #impl_generics From<#name #ty_generics> for #new_struct_name #ty_generics #where_clause {
             fn from(value: #name #ty_generics) -> Self {
@@ -177,16 +245,12 @@ pub fn impl_untrusted_variant(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
 
-        #[automatically_derived]
-        impl #impl_generics ::untrusted_value::SanitizeWith<#new_struct_name #ty_generics, #name #ty_generics> for #new_struct_name #ty_generics #where_clause {
-            fn sanitize_with<Sanitizer, Error>(self, sanitizer: Sanitizer) -> Result<#name #ty_generics, Error>
-            where
-                Sanitizer: FnOnce(Self) -> Result<#name #ty_generics, Error>
-            {
-                sanitizer(self)
-            }
-        }
+        // UNTRUSTED STRUCT -> sanitize_with -> STRUCT
+        #sanitize_with
 
+        // UNTRUSTED STRUCT
+        // SanitizeValueDerive: UNTRUSTED STRUCT -> sanitize_value -> STRUCT
+        // SanitizeValueDerive: UntrustedValue<STRUCT> -> sanitize_value -> STRUCT
         #untrusted_struct
     }
 }

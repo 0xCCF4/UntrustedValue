@@ -11,8 +11,14 @@
 //! This crate introduces several data types, traits and macros to simplify the process
 //! of taint tracking.
 //!
+//! ## What's the goal of this crate?
+//! The goal of this crate is to help design more secure applications. By tainting all
+//! program inputs, unsanitized data can not be used by accident. By providing a sanitizing
+//! interface to tainted data, security analysis can focus on analysing the implemented sanitizing functions
+//! instead of identifying where tainted data is located, and where it is used.
+//!
 //! ## Example usage
-//! User data must be wrapped within the container [UntrustedValue] which
+//! User data must be wrapped within the container [`UntrustedValue`] which
 //! provides marks the contained data as tainted.
 //! ```rust
 //! use untrusted_value::{UntrustedValue, SanitizeWith};
@@ -129,7 +135,6 @@
 //!
 //! ## Features
 //! Enabled by default:
-//!  * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to clear the taint of a value without sanitization.
 //!  * `derive`: enables the macros to automatically generate code
 //!
 //! Optional features:
@@ -138,11 +143,12 @@
 //!     channels are a concern. When enabling this feature, first all sanitizers are run, then
 //!     the first error is propagated.
 //!
-//! ## What's the goal of this crate?
-//! The goal of this crate is to help design more secure applications. By tainting all
-//! program inputs, unsanitized data can not be used by accident. By providing a sanitizing
-//! interface to tainted data, security analysis can focus on analysing the implemented sanitizing functions
-//! instead of identifying where tainted data is located, and where it is used.
+//! ## Runtime overhead
+//! When using compile optimizations there should be no runtime overhead since
+//! we are essentially just "renaming" data. The [`UntrustedValue`]
+//! struct only contains a single field of the original data type.
+//! When compiling for release the compiler should optimize all usage
+//! of the [`UntrustedValue`] struct away.
 //!
 //! ## Limitations
 //! Providing a taint tracking system is nice but still requires the developer to

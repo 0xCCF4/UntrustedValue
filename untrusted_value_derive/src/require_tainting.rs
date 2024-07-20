@@ -5,7 +5,7 @@ use syn::visit::Visit;
 pub struct TaintChecker {}
 
 impl TaintChecker {
-    #[allow(unused_variables)]
+    #[allow(unused_variables, clippy::unused_self)]
     pub fn process_file(&self, file: &syn::File) {
         // register checkers here
     }

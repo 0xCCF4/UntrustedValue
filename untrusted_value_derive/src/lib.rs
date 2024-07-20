@@ -102,30 +102,32 @@ use syn::{Data, Field, Fields};
 ///         })
 ///         .expect("Sanitization failed");
 /// ```
+///
+/// # Panics
+/// This macro will panic if the annotated struct is not valid Rust code.
 #[proc_macro_derive(UntrustedVariant, attributes(untrusted_derive))]
 pub fn untrusted_variant_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    untrusted_variant::impl_untrusted_variant(&ast).into()
+    untrusted_variant::impl_untrusted_variant_macro(&ast).into()
 }
 
 /// This macro can be used to annotate structs and automatically implement
 /// the `untrusted_value::SanitizeValue` trait.
 ///
-/// It has two operation modes:
-/// 1. Usage within `#[derive(SanitizeValue)]`: Here, the implementation
-///     calls `.sanitize_value()` on each member and return the same struct type.
-///     Members types are required to implement `SanitizeValue(MemberType)` trait.
-/// 2. Usage withing `#[untrusted_derive(...)]`: Here, the implementation
-///     will need `UntrustedValue<MemberType>` to implement `SanitizeValue(MemberType)`.
+/// The implementation implements the `SanitizeValue` trait on `UntrustedValue<AnnotatedType>`.
+/// Struct member types are required to implement the `SanitizeValue(MemberType)` trait.
 ///
 /// When using the `derive_harden_sanitize` feature first all sanitizer functions
 /// are called. Then the (first) error (if any) is propagated.
 /// If the flag is not present, the sanitizers are called sequentially and the first
 /// error is propagated directly.
+///
+/// # Panics
+/// This macro will panic if the annotated struct is not valid Rust code.
 #[proc_macro_derive(SanitizeValue)]
 pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    sanitize_value::impl_sanitize_value(&ast).into()
+    sanitize_value::impl_sanitize_value_macro(&ast).into()
 }
 
 /// This macro can be used to annotate functions to automatically wrap the
@@ -157,9 +159,12 @@ pub fn sanitize_value_derive(input: TokenStream) -> TokenStream {
 ///
 /// This macro should be put at any binary entry points. Like when using a webserver the functions
 /// handling a specific web request.
+///
+/// Note that: This macro will generate a compile error if a function argument is marked
+/// as mutable. Since an `UntrustedValue` can not be mutable.
 #[proc_macro_attribute]
 pub fn untrusted_inputs(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    untrusted_inputs::impl_untrusted_inputs(item.into()).into()
+    untrusted_inputs::impl_untrusted_inputs_macro(item.into()).into()
 }
 
 /// This macro can be used to annotate functions to automatically wrap the
@@ -204,7 +209,7 @@ pub fn untrusted_inputs(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// and marked as tainted.
 #[proc_macro_attribute]
 pub fn untrusted_output(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    untrusted_output::impl_untrusted_output(item.into()).into()
+    untrusted_output::impl_untrusted_output_macro(item.into()).into()
 }
 
 /// This macro can be used to annotate modules/functions/blocks.
@@ -237,17 +242,17 @@ pub fn untrusted_output(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// # Ignore a found taint pattern
 /// Annotate the taint generating block/function/pattern with
-/// the macro #[ignore_tainting]
-///
-/// # Detection features
-/// Detection patterns can be enabled by enabling the following features:
-/// - `check_taint_all`: Enable all pattern
-/// - `check_taint_`some_feature: Some_feature
+/// the macro `#[ignore_tainting]`
 ///
 /// # Limitations
 /// This macro does not guarantee that all taint sources are identified.
-#[proc_macro_attribute]
-pub fn require_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
+///
+/// # Panics
+/// This macro will panic if the input is not a valid Rust token.
+// #[proc_macro_attribute]
+#[allow(clippy::needless_pass_by_value)]
+#[allow(dead_code)]
+fn require_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: syn::File = syn::parse(item).expect("Failed to parse input");
     let checker = TaintChecker::default();
 
@@ -256,9 +261,11 @@ pub fn require_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ast.into_token_stream().into()
 }
 
-/// Ignores the found taint source pattern. See the macro #[require_tainting].
-#[proc_macro_attribute]
-pub fn ignore_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
+/// Ignores the found taint source pattern. See the macro `#[require_tainting]`.
+// #[proc_macro_attribute]
+#[allow(clippy::needless_pass_by_value)]
+#[allow(dead_code)]
+fn ignore_tainting(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
 
@@ -273,8 +280,15 @@ fn extract_struct_fields_from_ast(ast: &syn::DeriveInput) -> &Punctuated<Field, 
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 mod require_tainting;
+#[allow(clippy::module_name_repetitions)]
 mod sanitize_value;
+#[allow(clippy::module_name_repetitions)]
+mod sanitize_with;
+#[allow(clippy::module_name_repetitions)]
 mod untrusted_inputs;
+#[allow(clippy::module_name_repetitions)]
 mod untrusted_output;
+#[allow(clippy::module_name_repetitions)]
 mod untrusted_variant;

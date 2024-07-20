@@ -101,9 +101,15 @@ The library is written in Rust, and can be added using `cargo`:
 cargo add untrusted-value
 ```
 
+## Runtime overhead
+When using compile optimizations there should be no runtime overhead since
+we are essentially just "renaming" data. The `UntrustedValue`
+struct only contains a single field of the original data type.
+When compiling for release the compiler should optimize all usage
+of the `UntrustedValue` struct away.
+
 ## Features
 Enabled by default:
- * `allow_usage_without_sanitization`: enables the method `use_untrusted_value` to clear the taint of a value without sanitization
  * `derive`: enables the macros to automatically generate code
 
 Optional features:

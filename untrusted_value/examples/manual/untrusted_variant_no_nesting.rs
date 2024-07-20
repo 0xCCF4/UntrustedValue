@@ -7,11 +7,13 @@ pub struct NetworkConfig {
     pub listen_address: String,
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn sanitize_ip_address(address: String) -> Result<String, ()> {
     // somehow sanitize the address
     Ok(address)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn sanitize_port(port: u32) -> Result<u32, ()> {
     // somehow sanitize the port
     Ok(port)
