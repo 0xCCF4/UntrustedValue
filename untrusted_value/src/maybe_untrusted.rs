@@ -11,7 +11,7 @@ pub enum MaybeUntrusted<Insecure, Trusted = Insecure> {
 
 impl<Insecure> MaybeUntrusted<Insecure> {
     /// Be sure that you carefully handle the returned value since
-    /// it may be controllable by a malicious actor (when it is a MaybeUntrusted::Untrusted).
+    /// it may be controllable by a malicious actor (when it is a `MaybeUntrusted::Untrusted`).
     ///
     /// See the method documentation of the function returning this value
     pub fn use_untrusted_value(self) -> Insecure {
