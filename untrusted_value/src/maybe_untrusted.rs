@@ -14,7 +14,6 @@ impl<Insecure> MaybeUntrusted<Insecure> {
     /// it may be controllable by a malicious actor (when it is a MaybeUntrusted::Untrusted).
     ///
     /// See the method documentation of the function returning this value
-    #[cfg(feature = "allow_usage_without_sanitization")]
     pub fn use_untrusted_value(self) -> Insecure {
         match self {
             MaybeUntrusted::Ok(value) => value,
