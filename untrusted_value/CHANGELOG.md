@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value-v0.2.4...untrusted_value-v0.3.0) - 2024-07-20
 
 ### Added
-- [**breaking**] improved sanitization interface
+- [**breaking**] trait have now constraints and guarantees that must hold for implementations (see documentation of each trait)
+- [**breaking**] changed proc macro implementation to provide an better sanitization experience when using nested structs
+- introduced `FromTrustedVariant`
+- improved documentation of proc macros
 
 ### Fixed
 - removed feature still #[cfg(...)] in code
