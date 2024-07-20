@@ -39,7 +39,7 @@ pub use untrusted_value::{IntoUntrustedVariant, SanitizeValue};
 pub use untrusted_value::derive::UntrustedVariant;
 
 #[derive(UntrustedVariant)]
-#[untrusted_derive(Clone)] // tainted variant of NetworkConfig should be Cloneable
+#[untrusted_derive(SanitizeValueEnd, Clone)] // tainted variant of NetworkConfig should be Cloneable
 pub struct NetworkConfig {
   pub port: u32,
   pub listen_address: String,

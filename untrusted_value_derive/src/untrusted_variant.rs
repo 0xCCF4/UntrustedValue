@@ -112,8 +112,35 @@ fn impl_untrusted_variant_of_struct(
         quote! {}
     };
 
+    let sanitize_value_end_derive = parameters
+        .derive_macros
+        .iter()
+        .any(|d| d == "SanitizeValueEnd");
+    let sanitize_value_end_derive = if sanitize_value_end_derive {
+        quote! {
+            #[automatically_derived]
+            impl<CommonSanitizationError> ::untrusted_value::SanitizeValue<#name> for ::untrusted_value::UntrustedValue<#name>
+            where
+                #name: ::untrusted_value::IntoUntrustedVariant<#new_struct_name>,
+                #new_struct_name: ::untrusted_value::SanitizeValue<#name, Error=CommonSanitizationError>
+            {
+                type Error = CommonSanitizationError;
+                fn sanitize_value(self) -> std::result::Result<#name, Self::Error> {
+                    self.use_untrusted_value().to_untrusted_variant().sanitize_value()
+                }
+            }
+        }
+    } else {
+        quote! {}
+    };
+
+    assert!(
+        sanitize_value_end_derive.is_empty() || sanitize_value_derive.is_empty(),
+        "SanitizeValueEnd derive can not be used together with SanitizeValue derive"
+    );
+
     let derive_macros = parameters.derive_macros.iter().map(|d| {
-        if d == "SanitizeValue" {
+        if d == "SanitizeValue" || d == "SanitizeValueEnd" {
             quote! {}
         } else {
             quote! {
@@ -132,6 +159,9 @@ fn impl_untrusted_variant_of_struct(
         // UNTRUSTED STRUCT -> sanitize_value -> STRUCT
         // UntrustedValue<STRUCT> -> sanitize_value -> STRUCT
         #sanitize_value_derive
+
+        // UntrustedValue<STRUCT> -> sanitize_value -> STRUCT
+        #sanitize_value_end_derive
     }
 }
 

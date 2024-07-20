@@ -1,6 +1,6 @@
 use untrusted_value::derive::untrusted_inputs;
 use untrusted_value::derive::UntrustedVariant;
-use untrusted_value::{SanitizeValue, UntrustedValue};
+use untrusted_value::SanitizeValue;
 use untrusted_value_derive_internals::IntoUntrustedVariant;
 
 // note:
@@ -16,30 +16,30 @@ pub struct GeneralConfig {
 }
 
 #[derive(Clone, Debug, UntrustedVariant)] // <-- Implements `NetworkConfigUntrusted`
-#[untrusted_derive(Clone)]
+#[untrusted_derive(Clone, SanitizeValueEnd)]
 pub struct NetworkConfig {
     pub port: u32,
     pub listen_address: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, UntrustedVariant)]
+#[untrusted_derive(Clone, SanitizeValueEnd)]
 pub struct DatabaseConfig {}
 
 /// Sanitize the tainted version of `NetworkConfig`
-impl SanitizeValue<NetworkConfig> for UntrustedValue<NetworkConfig> {
+impl SanitizeValue<NetworkConfig> for NetworkConfigUntrusted {
     type Error = ();
 
     fn sanitize_value(self) -> Result<NetworkConfig, Self::Error> {
-        let unpacked = self.use_untrusted_value().to_untrusted_variant();
         Ok(NetworkConfig {
-            port: unpacked.port.use_untrusted_value(),
-            listen_address: unpacked.listen_address.use_untrusted_value(),
+            port: self.port.use_untrusted_value(),
+            listen_address: self.listen_address.use_untrusted_value(),
         }) // in real application: do some sanitizing
     }
 }
 
 /// Sanitize the tainted version of `DatabaseConfig`
-impl SanitizeValue<DatabaseConfig> for UntrustedValue<DatabaseConfig> {
+impl SanitizeValue<DatabaseConfig> for DatabaseConfigUntrusted {
     type Error = ();
 
     fn sanitize_value(self) -> Result<DatabaseConfig, Self::Error> {

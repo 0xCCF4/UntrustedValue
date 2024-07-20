@@ -103,6 +103,46 @@ use syn::{Data, Field, Fields};
 ///         .expect("Sanitization failed");
 /// ```
 ///
+/// This macro can be combined with the `SanitizeValue` macro to automatically implement the `SanitizeValue` trait.
+/// When there are no sub-structs that also implement the `SanitizeValue` trait: One may
+/// use the `#[untrusted_derive(SanitizeValueEnd)]` attribute to implement a wrapper that maps the
+/// call to `UntrustedValue<Struct>::sanitize_value()` to the call `StructUntrusted::sanitize_value()`.
+///
+/// For example:
+/// ```rust
+/// # use untrusted_value::{IntoUntrustedVariant, SanitizeValue};
+/// # use untrusted_value::derive::UntrustedVariant;
+/// #
+/// #[derive(Debug, UntrustedVariant)]
+/// #[untrusted_derive(Clone, SanitizeValue)]
+/// pub struct GeneralConfig {
+///     pub network: NetworkConfig,
+///     // other fields
+/// }
+///
+/// #[derive(Clone, Debug, UntrustedVariant)] // <-- Implements `NetworkConfigUntrusted`
+/// #[untrusted_derive(Clone, SanitizeValueEnd)]
+/// pub struct NetworkConfig {
+///     pub port: u32,
+///     pub listen_address: String,
+/// }
+///
+/// // Implement the `SanitizeValue` trait for the tainted version of `NetworkConfig`/`NetworkConfigUntrusted`
+/// // This is made possible by the `#[untrusted_derive(SanitizeValueEnd)]` attribute. Otherwise, you would have to
+/// // implement the `SanitizeValue` on the `UntrustedValue<NetworkConfig>` type. Using the `SanitizeValueEnd` attribute
+/// // this becomes more convenient/readable.
+/// impl SanitizeValue<NetworkConfig> for NetworkConfigUntrusted {
+///     # type Error = ();
+///     #
+///     fn sanitize_value(self) -> Result<NetworkConfig, Self::Error> {
+///         Ok(NetworkConfig {
+///             port: self.port.use_untrusted_value(),
+///             listen_address: self.listen_address.use_untrusted_value(),
+///         })
+///     }
+/// }
+/// ```
+///
 /// # Panics
 /// This macro will panic if the annotated struct is not valid Rust code.
 #[proc_macro_derive(UntrustedVariant, attributes(untrusted_derive))]
