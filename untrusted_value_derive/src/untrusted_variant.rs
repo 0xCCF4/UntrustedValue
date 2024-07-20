@@ -33,6 +33,7 @@ fn convert_struct_name_to_untrusted_variant(name: &Ident) -> Ident {
     Ident::new(&format!("{name}Untrusted"), name.span())
 }
 
+#[allow(clippy::too_many_lines)] // need to refactor this in the future
 fn impl_untrusted_variant_of_struct(
     parameters: &Parameters,
     ast: &syn::DeriveInput,
