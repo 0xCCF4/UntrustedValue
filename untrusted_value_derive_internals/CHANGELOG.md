@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive_internals-v0.2.4...untrusted_value_derive_internals-v0.3.0) - 2024-07-20
+
+### Added
+- [**breaking**] improved sanitization interface
+
 ## [0.2.4](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive_internals-v0.2.3...untrusted_value_derive_internals-v0.2.4) - 2024-07-18
 
 ### Added
