@@ -34,14 +34,19 @@ fn main() {
 
     for file in taint_source_files {
         let file = file.expect("Cannot read directory entry");
-        let file = file.path();
-        if file.extension() != Some("json".as_ref()) {
+        let file_path = file.path();
+        if file_path.extension() != Some("json".as_ref()) {
             continue;
         }
-        let file = fs::File::open(file).expect("Cannot open file");
+        let file = fs::File::open(&file_path).expect("Cannot open file");
 
-        let taint_module: TaintModuleJson =
-            serde_json::from_reader(file).expect("Cannot parse JSON");
+        let taint_module: TaintModuleJson = serde_json::from_reader(file).unwrap_or_else(|e| {
+            panic!(
+                "Cannot parse JSON in file {}: {}",
+                file_path.to_string_lossy(),
+                e
+            )
+        });
         taint_modules.push(taint_module);
     }
 

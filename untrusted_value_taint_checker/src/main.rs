@@ -89,15 +89,19 @@ pub fn main() {
         .collect::<Vec<&str>>();
 
     if build_plan.len() != 1 {
-        eprintln!("Error parsing build plan");
+        eprintln!(
+            "Error parsing build plan. The build plan contains {} lines",
+            build_plan.len()
+        );
         return;
     }
 
-    let mut build_plan: BuildPlan = if let Ok(build_plan) = serde_json::from_str(build_plan[0]) {
-        build_plan
-    } else {
-        eprintln!("Error parsing build plan");
-        return;
+    let mut build_plan: BuildPlan = match serde_json::from_str(build_plan[0]) {
+        Ok(build_plan) => build_plan,
+        Err(e) => {
+            eprintln!("Error parsing build plan: {}", e);
+            return;
+        }
     };
 
     for invocation in build_plan.invocations.iter_mut() {

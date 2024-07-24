@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use super::build_plan::BuildInvocation;
+use super::build_plan::Invocation;
 
 pub struct InvocationEnvironment {
     vars: Vec<(String, String)>,
@@ -10,7 +10,7 @@ pub struct InvocationEnvironment {
 }
 
 impl InvocationEnvironment {
-    pub fn enter(environment: &BuildInvocation) -> InvocationEnvironment {
+    pub fn enter(environment: &Invocation) -> InvocationEnvironment {
         let mut result = InvocationEnvironment {
             vars: Vec::with_capacity(environment.env.len()),
             cwd: env::current_dir().unwrap(),
@@ -21,7 +21,9 @@ impl InvocationEnvironment {
             result.vars.push((key.to_owned(), value.to_owned()));
         }
 
-        env::set_current_dir(&environment.cwd).unwrap();
+        if let Some(cwd) = &environment.cwd {
+            env::set_current_dir(cwd).unwrap();
+        }
 
         for (key, value) in environment.env.iter() {
             env::set_var(key, value);

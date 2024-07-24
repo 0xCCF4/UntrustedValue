@@ -14,7 +14,7 @@ use tracing::{event, span, Level};
 
 pub struct TaintCompilerCallbacks {
     pub package_name: String,
-    pub package_version: String,
+    pub package_version: semver::Version,
     pub internal_interface_functions: Vec<FunctionInfo>,
 }
 
