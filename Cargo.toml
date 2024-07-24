@@ -2,6 +2,9 @@
 members = [
     "untrusted_value",
     "untrusted_value_derive",
-    "untrusted_value_derive_internals"
-]
+    "untrusted_value_derive_internals",
+    "untrusted_value_taint_checker",
+    "untrusted_value_taint_checker/sample"]
 resolver = "2"
+
+exclude = ["rust"]

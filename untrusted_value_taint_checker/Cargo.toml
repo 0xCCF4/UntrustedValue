@@ -1,0 +1,24 @@
+[package]
+name = "untrusted_value_taint_checker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+untrusted_value = { version = "0.3.1", path = "../untrusted_value"}
+anyhow = "1.0.86"
+config = "0.14.0"
+tracing-subscriber = {  version = "0.3.18" , features = ["env-filter"]}
+tracing = "0"
+serde_json = "1.0.120"
+tempfile = "3.10.1"
+serde = { version = "1.0.204", features = ["derive"] }
+#owo-colors = { version = "4", features = ["supports-colors"] }
+#cargo_metadata = "0.18.1"
+#bpaf = { version = "0.9.12", features = ["bpaf_derive", "autocomplete"] }
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[build-dependencies]
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = "1.0.120"

@@ -16,4 +16,7 @@ target/
 # Idea
 .idea/
 
+# VScode
+.vscode/
+
 Cargo.lock

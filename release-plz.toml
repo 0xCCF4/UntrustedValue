@@ -1,0 +1,9 @@
+[workspace]
+
+[[package]]
+name = "sample"
+publish = false
+
+[[package]]
+name = "untrusted_value_taint_checker"
+publish = false

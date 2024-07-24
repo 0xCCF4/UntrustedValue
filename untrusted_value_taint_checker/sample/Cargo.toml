@@ -1,0 +1,7 @@
+[package]
+name = "sample"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+untrusted_value = { version = "0", path = "../../untrusted_value" }

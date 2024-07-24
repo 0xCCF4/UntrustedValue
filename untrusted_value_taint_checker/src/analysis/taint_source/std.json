@@ -1,0 +1,28 @@
+{
+    "taint_module_name": "std",
+    "description": "Contains taint sources definitions for the standard library",
+    "content": [
+        {
+            "module_prefix": "env",
+            "taint_sources": [
+                {
+                    "functions": ["args", "os_args", "vars", "vars_os", "var", "var_os"],
+                    "description": "Environment arguments might be attacker controlled."
+                },
+                {
+                    "functions": ["current_exe"],
+                    "description": "The current executable name is passed as argument thoughs migt be attacker controlled."
+                }
+            ]
+        },
+        {
+            "module_prefix": "fs",
+            "taint_sources": [
+                {
+                    "functions": ["File::open"],
+                    "description": "Files shoud be concidered potentially malicious."
+                }
+            ]
+        }
+    ]
+}
