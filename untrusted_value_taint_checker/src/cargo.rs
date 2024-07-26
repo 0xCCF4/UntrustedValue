@@ -13,8 +13,16 @@ use std::{
     env, fs,
     process::{Command, Stdio},
 };
+use crate::analysis::taint_source::{get_taint_sources_definitions, TaintSource};
 
 pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
+    let taint_sources = get_taint_sources_definitions();
+    let mut actual_used_taint_sources = Vec::default();
+    for module in &taint_sources {
+        actual_used_taint_sources.extend(module.sources.clone().into_iter());
+    }
+    let actual_used_taint_sources = &actual_used_taint_sources;
+
     let total_invocations = build_plan.invocations.len();
 
     for i in 0..build_plan.invocations.len() {
@@ -30,9 +38,11 @@ pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
 
         let links = current.links.clone();
 
+        
+
         match current.compile_mode {
             CompileMode::Build => {
-                let results = execute_build_invocation_mir_analysis(current)?;
+                let results = execute_build_invocation_mir_analysis(current, &actual_used_taint_sources)?;
 
                 println!(
                     " - Found {} functions",
@@ -224,9 +234,10 @@ fn execute_build_invocation_original_rustc(invocation: &Invocation) -> anyhow::R
     Ok(())
 }
 
-fn execute_build_invocation_mir_analysis(
+fn execute_build_invocation_mir_analysis<'tsrc>(
     invocation: &Invocation,
-) -> anyhow::Result<TaintCompilerCallbacks> {
+    taint_sources: &'tsrc Vec<TaintSource<'static>>
+) -> anyhow::Result<TaintCompilerCallbacks<'tsrc>> {
     // print args
     let mut args = invocation.args.clone();
     args.insert(0, invocation.program.clone());
@@ -236,6 +247,7 @@ fn execute_build_invocation_mir_analysis(
         package_name: invocation.package_name.clone(),
         package_version: invocation.package_version.clone(),
         internal_interface_functions: Vec::default(),
+        taint_sources,
     };
 
     rustc::run_compiler(args, callbacks.cast_to_dyn())?;

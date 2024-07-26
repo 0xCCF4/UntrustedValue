@@ -1,30 +1,27 @@
-extern crate rustc_ast;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_interface;
-extern crate rustc_middle;
-extern crate rustc_session;
-extern crate rustc_span;
+use std::path::PathBuf;
 
+use petgraph::dot::{Config, Dot};
 use rustc_driver::Compilation;
-use rustc_hir::intravisit::Visitor;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::{mir::{visit::Visitor as VisitorMir}, ty::{TyCtxt}};
 use tracing::{event, span, Level};
+use crate::analysis::taint_source::TaintSource;
 
-pub struct TaintCompilerCallbacks {
+use super::{hir::crate_function_finder::{CrateFunctionFinder, FunctionInfo}, mir::data_flow::DataFlowTaintTracker};
+
+pub struct TaintCompilerCallbacks<'tsrc> {
     pub package_name: String,
     pub package_version: semver::Version,
+    pub taint_sources: &'tsrc Vec<TaintSource<'static>>,
     pub internal_interface_functions: Vec<FunctionInfo>,
 }
 
-impl TaintCompilerCallbacks {
+impl<'tsrc> TaintCompilerCallbacks<'tsrc> {
     pub fn cast_to_dyn(&mut self) -> &mut (dyn rustc_driver::Callbacks + Send) {
         self
     }
 }
 
-impl rustc_driver::Callbacks for TaintCompilerCallbacks {
+impl<'tsrc> rustc_driver::Callbacks for TaintCompilerCallbacks<'tsrc> {
     /// All the work we do happens after analysis, so that we can make assumptions about the validity of the MIR.
     fn after_analysis<'tcx>(
         &mut self,
@@ -51,56 +48,17 @@ fn enter_with_fn<'tcx, TyCtxtFn>(
         .enter(move |context| enter_fn(context, callback_data));
 }
 
-pub struct FunctionInfo {
-    pub function_name: String,
-    pub body_id: rustc_hir::BodyId,
-    pub local_def_id: rustc_hir::def_id::LocalDefId,
-    pub span: rustc_span::Span,
-}
-
-struct CrateVisitor<'a, 'tcx> {
-    pub tcx: &'a TyCtxt<'tcx>,
-    internal_functions: Vec<FunctionInfo>,
-}
-
-impl<'a, 'tcx> CrateVisitor<'a, 'tcx> {
-    pub fn new(tcx: &'a TyCtxt<'tcx>) -> Self {
-        Self {
-            tcx,
-            internal_functions: Vec::default(),
-        }
-    }
-}
-
-impl<'v, 'a, 'tcx> Visitor<'v> for CrateVisitor<'a, 'tcx> {
-    fn visit_fn(
-        &mut self,
-        _kind: rustc_hir::intravisit::FnKind<'v>,
-        _decl: &'v rustc_hir::FnDecl<'v>,
-        body_id: rustc_hir::BodyId,
-        span: rustc_span::Span,
-        local_def_id: rustc_hir::def_id::LocalDefId,
-    ) -> Self::Result {
-        let function_name = self.tcx.def_path_str(local_def_id);
-        self.internal_functions.push(FunctionInfo {
-            body_id,
-            span,
-            local_def_id,
-            function_name,
-        });
-    }
-}
-
 pub fn mir_analysis(tcx: TyCtxt, callback_data: &mut TaintCompilerCallbacks) {
     // let mut finder = TaintAttributeFinder::new(tcx);
 
     let span = span!(Level::TRACE, "Public interface analysis");
     let _enter = span.enter();
 
-    let mut hir_analysis = CrateVisitor::new(&tcx);
+    let mut hir_analysis = CrateFunctionFinder::new(tcx);
     tcx.hir().visit_all_item_likes_in_crate(&mut hir_analysis);
+    let functions = hir_analysis.results();
 
-    for finfo in &hir_analysis.internal_functions {
+    for finfo in &functions {
         event!(
             Level::TRACE,
             function_name = finfo.function_name,
@@ -108,6 +66,31 @@ pub fn mir_analysis(tcx: TyCtxt, callback_data: &mut TaintCompilerCallbacks) {
         );
     }
 
-    callback_data.internal_interface_functions =
-        std::mem::take(&mut hir_analysis.internal_functions);
+    for function in &functions { 
+        let body = tcx.optimized_mir(function.local_def_id);
+        let mut tracker = DataFlowTaintTracker::new(tcx, body);
+
+        println!("{}", function.function_name);
+        tracker.visit_body(body);
+        println!("\n\n\n");
+        if callback_data.package_name == "sample" || callback_data.package_name.starts_with("untrusted_value") {
+            let dir_path = PathBuf::from("/tmp/taint/").join(&callback_data.package_name);
+            std::fs::create_dir_all(&dir_path).expect("Failed to create directory");
+            let dot_file = dir_path.join(&function.function_name).with_extension("dot");
+            let dot = Dot::with_config(&tracker.data_dependency_graph, &[Config::EdgeNoLabel]);
+            std::fs::write(&dot_file, format!("{:?}", dot)).expect("Failed to write dot file");
+            let pdf_file = dot_file.with_extension("pdf");
+            std::process::Command::new("dot")
+                .arg("-Tpdf")
+                .arg("-o")
+                .arg(&pdf_file)
+                .arg(&dot_file)
+                .output()
+                .expect("Failed to execute dot command");
+            std::fs::remove_file(&dot_file).expect("Failed to delete dot file");
+        }
+        println!("\n\n\n");
+    }
+    let mut functions = functions;
+    callback_data.internal_interface_functions = std::mem::take(&mut functions);
 }

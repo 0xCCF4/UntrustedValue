@@ -1,12 +1,3 @@
-extern crate rustc_ast;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_interface;
-extern crate rustc_middle;
-extern crate rustc_session;
-extern crate rustc_span;
-
 use rustc_session::{config::ErrorOutputType, EarlyDiagCtxt};
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 

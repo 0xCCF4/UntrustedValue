@@ -3,7 +3,7 @@
     "description": "Contains taint sources definitions for the standard library",
     "content": [
         {
-            "module_prefix": "env",
+            "module_prefix": "std::env",
             "taint_sources": [
                 {
                     "functions": ["args", "os_args", "vars", "vars_os", "var", "var_os"],
@@ -16,7 +16,7 @@
             ]
         },
         {
-            "module_prefix": "fs",
+            "module_prefix": "std::fs",
             "taint_sources": [
                 {
                     "functions": ["File::open"],
