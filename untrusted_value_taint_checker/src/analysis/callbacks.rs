@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use crate::analysis::taint_source::TaintSource;
+use crate::analysis::{mir::data_flow_checker, taint_source::TaintSource};
+use graphviz_rust::printer::{DotPrinter, PrinterContext};
 use petgraph::dot::Dot;
 use rustc_driver::Compilation;
 use rustc_middle::{mir::visit::Visitor as VisitorMir, ty::TyCtxt};
@@ -71,30 +72,41 @@ pub fn mir_analysis(tcx: TyCtxt, callback_data: &mut TaintCompilerCallbacks) {
 
     for function in &functions {
         if callback_data.package_name == "sample"
-            || callback_data.package_name.starts_with("untrusted_value")
+            // || callback_data.package_name.starts_with("untrusted_value")
         {
             let body = tcx.optimized_mir(function.local_def_id);
             let mut tracker = DataFlowTaintTracker::new(tcx, body);
 
             println!("{}", function.function_name);
             tracker.visit_body(body);
-            println!("\n\n\n");
+            //println!("\n\n\n");
+
+            let check = data_flow_checker::check_data_flow(
+                tracker.data_dependency_graph,
+                tcx,
+                callback_data.taint_sources,
+                true,
+            );
+
             let dir_path = PathBuf::from("/tmp/taint/").join(&callback_data.package_name);
             std::fs::create_dir_all(&dir_path).expect("Failed to create directory");
             let dot_file = dir_path.join(&function.function_name).with_extension("dot");
-            let dot = Dot::with_config(&tracker.data_dependency_graph, &[]);
-            std::fs::write(&dot_file, format!("{:?}", dot)).expect("Failed to write dot file");
+            let dot = check.data_dependency_graph.unwrap().print(&mut PrinterContext::default());
+            std::fs::write(&dot_file, format!("{}", dot)).expect("Failed to write dot file");
             let pdf_file = dot_file.with_extension("pdf");
-            std::process::Command::new("dot")
+            let mut cmd = std::process::Command::new("dot")
                 .arg("-Tpdf")
                 .arg("-o")
                 .arg(&pdf_file)
                 .arg(&dot_file)
-                .output()
+                .spawn()
                 .expect("Failed to execute dot command");
-            std::fs::remove_file(&dot_file).expect("Failed to delete dot file");
+            let exit = cmd.wait().expect("Failed to wait for dot command");
+            if exit.success() {
+                std::fs::remove_file(&dot_file).expect("Failed to delete dot file");
+            }
         }
-        println!("\n\n\n");
+        //println!("\n\n\n");
     }
     let mut functions = functions;
     callback_data.internal_interface_functions = std::mem::take(&mut functions);

@@ -11,7 +11,7 @@ use rustc_span::Span;
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum DependencyGraphNode<'tcx> {
-    Local { dst: mir::Local },
+    Local { dst: mir::Local, ty: ty::Ty<'tcx> },
     FunctionCall { function: ty::Ty<'tcx>, span: Span },
     ReturnedToCaller,
     FunctionInput,
@@ -19,10 +19,19 @@ pub enum DependencyGraphNode<'tcx> {
     ControlFlow,
 }
 
+impl<'tcx> DependencyGraphNode<'tcx> {
+    pub fn from_local(local: mir::Local, body: &mir::Body<'tcx>) -> Self {
+        DependencyGraphNode::Local {
+            dst: local,
+            ty: body.local_decls[local].ty,
+        }
+    }
+}
+
 impl<'tcx> Debug for DependencyGraphNode<'tcx> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            DependencyGraphNode::Local { dst } => write!(f, "{}", dst.index()),
+            DependencyGraphNode::Local { dst, ty: _ } => write!(f, "{}", dst.index()),
             DependencyGraphNode::FunctionCall { function, span: _ } => {
                 write!(f, "Call: {}", function.to_string())
             }
@@ -55,6 +64,12 @@ impl Debug for EdgeInstance {
 #[derive(Clone)]
 pub struct GraphEdge {
     pub instances: Vec<EdgeInstance>,
+}
+
+impl GraphEdge {
+    pub fn is_move_only(&self) -> bool {
+        self.instances.iter().all(|x| x.data_flow_type == EdgeDataFlowType::Move)
+    }
 }
 
 impl Debug for GraphEdge {
@@ -231,7 +246,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
         for arg in 1..body.arg_count + 1 {
             self.add_data_dependency_edge(
                 DependencyGraphNode::FunctionInput,
-                DependencyGraphNode::Local { dst: arg.into() },
+                DependencyGraphNode::from_local(arg.into(), self.current_body),
                 body.span,
                 EdgeDataFlowType::Move,
             );
@@ -240,15 +255,15 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
         self.super_body(body);
     }
     fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
-        println!("\n - Basic Block Data: {}", block.index());
+        // println!("\n - Basic Block Data: {}", block.index());
         self.super_basic_block_data(block, data);
     }
     fn visit_local_decl(&mut self, local: mir::Local, local_decl: &mir::LocalDecl<'tcx>) {
-        println!("     let {:?} = {:?}", local, local_decl.ty);
+        // println!("     let {:?} = {:?}", local, local_decl.ty);
         self.super_local_decl(local, local_decl);
     }
     fn visit_statement(&mut self, statement: &mir::Statement<'tcx>, location: mir::Location) {
-        println!("     Statement: {:?} @ {:?}", statement, location);
+        // println!("     Statement: {:?} @ {:?}", statement, location);
 
         let mut dependencies: Vec<(mir::Local, EdgeDataFlowType)> = Vec::with_capacity(2);
 
@@ -257,8 +272,8 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
                 self.get_rvalue_dependency(&rvalue, &mut dependencies);
                 for (dep, data_flow) in dependencies.iter() {
                     self.add_data_dependency_edge(
-                        DependencyGraphNode::Local { dst: *dep },
-                        DependencyGraphNode::Local { dst: place.local },
+                        DependencyGraphNode::from_local(*dep, self.current_body),
+                        DependencyGraphNode::from_local(place.local, self.current_body),
                         statement.source_info.span,
                         *data_flow,
                     );
@@ -271,16 +286,16 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
                     match &copy.src {
                         mir::Operand::Copy(src) => {
                             self.add_data_dependency_edge(
-                                DependencyGraphNode::Local { dst: src.local },
-                                DependencyGraphNode::Local { dst: dst.local },
+                                DependencyGraphNode::from_local(src.local, self.current_body),
+                                DependencyGraphNode::from_local(dst.local, self.current_body),
                                 statement.source_info.span,
                                 EdgeDataFlowType::Used,
                             );
                         }
                         mir::Operand::Move(src) => {
                             self.add_data_dependency_edge(
-                                DependencyGraphNode::Local { dst: src.local },
-                                DependencyGraphNode::Local { dst: dst.local },
+                                DependencyGraphNode::from_local(src.local, self.current_body),
+                                DependencyGraphNode::from_local(dst.local, self.current_body),
                                 statement.source_info.span,
                                 EdgeDataFlowType::Move,
                             );
@@ -310,11 +325,11 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
         rvalue: &mir::Rvalue<'tcx>,
         location: mir::Location,
     ) {
-        println!("        {:?} <- {:?} @ {:?}", place, rvalue, location);
+        // println!("        {:?} <- {:?} @ {:?}", place, rvalue, location);
         self.super_assign(place, rvalue, location);
     }
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: mir::Location) {
-        println!("     stop {:?}", terminator.kind);
+        // println!("     stop {:?}", terminator.kind);
 
         let mut dependencies: Vec<(mir::Local, EdgeDataFlowType)> = Vec::with_capacity(2);
 
@@ -324,7 +339,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
                 self.get_operand_dependency(&discr, &mut dependencies, None);
                 for (dep, flow) in dependencies {
                     self.add_data_dependency_edge(
-                        DependencyGraphNode::Local { dst: dep },
+                        DependencyGraphNode::from_local(dep, self.current_body),
                         DependencyGraphNode::ControlFlow,
                         terminator.source_info.span,
                         flow,
@@ -335,9 +350,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
             mir::TerminatorKind::UnwindTerminate(_reason) => {}
             mir::TerminatorKind::Return => {
                 self.add_data_dependency_edge(
-                    DependencyGraphNode::Local {
-                        dst: mir::Local::ZERO,
-                    },
+                    DependencyGraphNode::from_local(mir::Local::ZERO, self.current_body),
                     DependencyGraphNode::ReturnedToCaller,
                     terminator.source_info.span,
                     EdgeDataFlowType::Move,
@@ -370,7 +383,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
 
                 for (dep, flow) in dependencies {
                     self.add_data_dependency_edge(
-                        DependencyGraphNode::Local { dst: dep },
+                        DependencyGraphNode::from_local(dep, self.current_body),
                         func_call.clone(),
                         fn_span.to_owned(),
                         flow,
@@ -379,9 +392,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
 
                 self.add_data_dependency_edge(
                     func_call,
-                    DependencyGraphNode::Local {
-                        dst: destination.local,
-                    },
+                    DependencyGraphNode::from_local(destination.local, self.current_body),
                     fn_span.to_owned(),
                     EdgeDataFlowType::Move,
                 );
@@ -402,7 +413,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
 
                 for (dep, flow) in dependencies {
                     self.add_data_dependency_edge(
-                        DependencyGraphNode::Local { dst: dep },
+                        DependencyGraphNode::from_local(dep, self.current_body),
                         func_call.clone(),
                         fn_span.to_owned(),
                         flow,
@@ -427,7 +438,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
 
                 for (dep, flow) in dependencies {
                     self.add_data_dependency_edge(
-                        DependencyGraphNode::Local { dst: dep },
+                        DependencyGraphNode::from_local(dep, self.current_body),
                         DependencyGraphNode::ReturnedToCaller,
                         terminator.source_info.span,
                         flow,
@@ -436,9 +447,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
 
                 self.add_data_dependency_edge(
                     DependencyGraphNode::FunctionInput,
-                    DependencyGraphNode::Local {
-                        dst: resume_arg.local,
-                    },
+                    DependencyGraphNode::from_local(resume_arg.local, self.current_body),
                     terminator.source_info.span,
                     EdgeDataFlowType::Move,
                 );
@@ -510,7 +519,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
 
                 for (dep, flow) in inputs {
                     self.add_data_dependency_edge(
-                        DependencyGraphNode::Local { dst: dep },
+                        DependencyGraphNode::from_local(dep, self.current_body),
                         asm_block.clone(),
                         terminator.source_info.span,
                         flow,
@@ -519,7 +528,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
                 for (dep, flow) in outputs {
                     self.add_data_dependency_edge(
                         asm_block.clone(),
-                        DependencyGraphNode::Local { dst: dep },
+                        DependencyGraphNode::from_local(dep, self.current_body),
                         terminator.source_info.span,
                         flow,
                     );
@@ -530,7 +539,7 @@ impl<'tcx, 'a> VisitorMir<'tcx> for DataFlowTaintTracker<'tcx, 'a> {
         self.super_terminator(terminator, location);
     }
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: mir::Location) {
-        println!("        op {:?}", operand);
+        // println!("        op {:?}", operand);
         self.super_operand(operand, location);
     }
 }
