@@ -1,6 +1,5 @@
-use rustc_middle::ty;
 use rustc_hir::intravisit::Visitor as HirVisitor;
-
+use rustc_middle::ty;
 
 pub struct FunctionInfo {
     pub function_name: String,

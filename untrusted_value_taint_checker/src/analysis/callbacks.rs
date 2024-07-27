@@ -1,12 +1,15 @@
 use std::path::PathBuf;
 
-use petgraph::dot::{Config, Dot};
-use rustc_driver::Compilation;
-use rustc_middle::{mir::{visit::Visitor as VisitorMir}, ty::{TyCtxt}};
-use tracing::{event, span, Level};
 use crate::analysis::taint_source::TaintSource;
+use petgraph::dot::Dot;
+use rustc_driver::Compilation;
+use rustc_middle::{mir::visit::Visitor as VisitorMir, ty::TyCtxt};
+use tracing::{event, span, Level};
 
-use super::{hir::crate_function_finder::{CrateFunctionFinder, FunctionInfo}, mir::data_flow::DataFlowTaintTracker};
+use super::{
+    hir::crate_function_finder::{CrateFunctionFinder, FunctionInfo},
+    mir::data_flow::DataFlowTaintTracker,
+};
 
 pub struct TaintCompilerCallbacks<'tsrc> {
     pub package_name: String,
@@ -66,18 +69,20 @@ pub fn mir_analysis(tcx: TyCtxt, callback_data: &mut TaintCompilerCallbacks) {
         );
     }
 
-    for function in &functions { 
-        let body = tcx.optimized_mir(function.local_def_id);
-        let mut tracker = DataFlowTaintTracker::new(tcx, body);
+    for function in &functions {
+        if callback_data.package_name == "sample"
+            || callback_data.package_name.starts_with("untrusted_value")
+        {
+            let body = tcx.optimized_mir(function.local_def_id);
+            let mut tracker = DataFlowTaintTracker::new(tcx, body);
 
-        println!("{}", function.function_name);
-        tracker.visit_body(body);
-        println!("\n\n\n");
-        if callback_data.package_name == "sample" || callback_data.package_name.starts_with("untrusted_value") {
+            println!("{}", function.function_name);
+            tracker.visit_body(body);
+            println!("\n\n\n");
             let dir_path = PathBuf::from("/tmp/taint/").join(&callback_data.package_name);
             std::fs::create_dir_all(&dir_path).expect("Failed to create directory");
             let dot_file = dir_path.join(&function.function_name).with_extension("dot");
-            let dot = Dot::with_config(&tracker.data_dependency_graph, &[Config::EdgeNoLabel]);
+            let dot = Dot::with_config(&tracker.data_dependency_graph, &[]);
             std::fs::write(&dot_file, format!("{:?}", dot)).expect("Failed to write dot file");
             let pdf_file = dot_file.with_extension("pdf");
             std::process::Command::new("dot")

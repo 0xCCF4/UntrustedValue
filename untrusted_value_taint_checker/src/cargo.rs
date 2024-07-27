@@ -1,4 +1,5 @@
 use crate::analysis::build_plan::{CompileMode, TargetKind};
+use crate::analysis::taint_source::{get_taint_sources_definitions, TaintSource};
 use crate::{
     analysis::{
         build_plan::{BuildPlan, Invocation},
@@ -13,7 +14,6 @@ use std::{
     env, fs,
     process::{Command, Stdio},
 };
-use crate::analysis::taint_source::{get_taint_sources_definitions, TaintSource};
 
 pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
     let taint_sources = get_taint_sources_definitions();
@@ -38,11 +38,10 @@ pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
 
         let links = current.links.clone();
 
-        
-
         match current.compile_mode {
             CompileMode::Build => {
-                let results = execute_build_invocation_mir_analysis(current, &actual_used_taint_sources)?;
+                let results =
+                    execute_build_invocation_mir_analysis(current, &actual_used_taint_sources)?;
 
                 println!(
                     " - Found {} functions",
@@ -236,7 +235,7 @@ fn execute_build_invocation_original_rustc(invocation: &Invocation) -> anyhow::R
 
 fn execute_build_invocation_mir_analysis<'tsrc>(
     invocation: &Invocation,
-    taint_sources: &'tsrc Vec<TaintSource<'static>>
+    taint_sources: &'tsrc Vec<TaintSource<'static>>,
 ) -> anyhow::Result<TaintCompilerCallbacks<'tsrc>> {
     // print args
     let mut args = invocation.args.clone();
