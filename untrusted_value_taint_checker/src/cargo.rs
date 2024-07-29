@@ -9,6 +9,9 @@ use crate::{
     rustc,
 };
 use anyhow::anyhow;
+use owo_colors::colors::*;
+use owo_colors::OwoColorize;
+use xterm::*;
 use std::io::{BufReader, Read};
 use std::{
     env, fs,
@@ -43,16 +46,34 @@ pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
                 let results =
                     execute_build_invocation_mir_analysis(current, &actual_used_taint_sources)?;
 
-                println!(
+                /* println!(
                     " - Found {} functions",
-                    results.internal_interface_functions.len()
+                    results.taint_problems.len()
                 );
-                for func in results.internal_interface_functions.iter().take(10) {
-                    println!("    - {}", func.function_name)
+                for func in results.taint_problems.iter().take(10) {
+                    println!("    - {}", func.0.function_name)
                 }
-                if results.internal_interface_functions.len() > 10 {
+                if results.taint_problems.len() > 10 {
                     println!("      ...")
+                }*/
+
+                let mut problem_found = false;
+                for (function, problems) in results.taint_problems {
+                    for problem in problems {
+                        problem_found = true;
+
+                        println!("{} found in {}:{} {:?}", "Sanitizing problem".red().bold(), results.package_name, function.function_name.italic().yellow(), function.span.fg::<LightGray>());
+                        println!(" {} Usage of {} at {}", "|".bold(), problem.source_func_sig.bold().blue(), problem.source_span.fg::<LightGray>());
+                        println!(" {} without wrapping the result as {} is discouraged", "|".bold(), "UntrustedValue".bold().green());
+                        println!(" {} {} {}", "|".bold(), ">".italic(), problem.taint_source.description.italic());
+                        println!(" {} Make sure to wrap the result like this {}{}(...){}", "|".bold(), "UntrustedValue::from(".bold().green(), problem.source_func_sig.blue().bold(), ")".bold().green());
+                        println!();
+                    }
                 }
+
+                /* if problem_found {
+                    return Err(anyhow!("Found taint problems"));
+                }*/
             }
             CompileMode::RunCustomBuild => {
                 let mut cmd = Command::new(&current.program)
@@ -245,7 +266,14 @@ fn execute_build_invocation_mir_analysis<'tsrc>(
     let mut callbacks = TaintCompilerCallbacks {
         package_name: invocation.package_name.clone(),
         package_version: invocation.package_version.clone(),
-        internal_interface_functions: Vec::default(),
+        taint_problems: config::Map::new(),
+        internal_function_analysis: true,
+        data_flow_analysis: true,
+        draw_graphs_dir: {
+            if invocation.package_name == "sample" {
+                Some("/tmp/taint/".into())
+            } else { None }
+        },
         taint_sources,
     };
 

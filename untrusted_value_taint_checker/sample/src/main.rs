@@ -1,3 +1,5 @@
+use std::{env::VarError, fs::File};
+
 use untrusted_value::UntrustedValue;
 
 #[no_mangle]
@@ -14,8 +16,28 @@ fn works() {
 }
 
 #[no_mangle]
+fn works2() {
+    let insecure_env = std::env::var("TEST");
+
+    // do some stuff in between
+    println!("waiting...");
+    std::thread::sleep(std::time::Duration::from_secs(10));
+
+    let secure_env: UntrustedValue<Result<String, VarError>> = insecure_env.into();
+
+    println!("{:?}", secure_env.use_untrusted_value())
+}
+
+#[no_mangle]
 fn fails() {
     let insecure_env = std::env::var("TEST");
+
+    println!("{:?}", insecure_env)
+}
+
+#[no_mangle]
+fn fails2() {
+    let insecure_env = File::open("test.txt");
 
     println!("{:?}", insecure_env)
 }
@@ -59,19 +81,6 @@ fn nested_function(mut input: usize) -> usize {
     inner_function(&mut input);
 
     input
-}
-
-struct ABC {
-    value: i32,
-}
-#[no_mangle]
-fn test_rename(q: ABC) -> ABC {
-    let mut x = q;
-    let mut y = x;
-    y.value = 10;
-    let z = y;
-
-    z
 }
 
 fn main() {

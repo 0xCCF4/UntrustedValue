@@ -1,11 +1,15 @@
+use std::fmt::Debug;
 use rustc_hir::intravisit::Visitor as HirVisitor;
 use rustc_middle::ty;
 
+use crate::IRSpan;
+
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct FunctionInfo {
     pub function_name: String,
     pub body_id: rustc_hir::BodyId,
     pub local_def_id: rustc_hir::def_id::LocalDefId,
-    pub span: rustc_span::Span,
+    pub span: IRSpan,
 }
 
 pub struct CrateFunctionFinder<'tcx> {
@@ -37,7 +41,7 @@ impl<'v, 'tcx> HirVisitor<'v> for CrateFunctionFinder<'tcx> {
         let function_name = self.tcx.def_path_str(local_def_id);
         self.internal_functions.push(FunctionInfo {
             body_id,
-            span,
+            span: IRSpan::new(span, self.tcx),
             local_def_id,
             function_name,
         });
