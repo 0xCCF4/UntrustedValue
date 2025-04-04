@@ -15,6 +15,7 @@ use untrusted_value_derive_internals::{SanitizeValue, SanitizeWith};
 ///
 /// For naming purposes an untrusted value mapped inside this type is considered safe/trusted
 /// since it can not be accessed without sanitization.
+#[repr(transparent)]
 pub struct UntrustedValue<Insecure> {
     value: Insecure,
 }
