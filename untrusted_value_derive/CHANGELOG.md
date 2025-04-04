@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive-v0.3.1...untrusted_value_derive-v0.3.2) - 2025-04-04
+
+### Other
+
+- *(doc)* fixed cargo clippy errors
+
 ## [0.3.1](https://github.com/0xCCF4/UntrustedValue/compare/untrusted_value_derive-v0.3.0...untrusted_value_derive-v0.3.1) - 2024-07-20
 
 ### Added
