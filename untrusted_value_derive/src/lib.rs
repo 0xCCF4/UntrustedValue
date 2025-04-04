@@ -17,7 +17,9 @@ use syn::token::Comma;
 use syn::{Data, Field, Fields};
 
 /// This macro can be used to annotate struct that contains data that
-/// might be untrusted. The macro will generate a new struct that resembles
+/// might be untrusted.
+///
+/// The macro will generate a new struct that resembles
 /// the original struct, but all fields will be wrapped in `untrusted_value::UntrustedValue`.
 ///
 /// An instance of a struct like this:
