@@ -36,7 +36,7 @@ pub fn impl_sanitize_value_custom(params: SanitizeValueMacroCustomParameters) ->
             #field_type: ::untrusted_value::SanitizeValue<#new_field_type, Error = CommonSanitizationError>,
         }
     });
-    
+
     let where_clause = if let Some(where_clause) = where_clause {
         quote! {
             #where_clause #(#where_fields)*
