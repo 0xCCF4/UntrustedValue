@@ -1,5 +1,9 @@
 use crate::analysis::build_plan::{CompileMode, TargetKind};
 use crate::analysis::taint_source::{get_taint_sources_definitions, TaintSource};
+use crate::args::Args;
+use crate::output::{
+    AnalysisProblem, AnalysisResult, OutputFormat, PackageAnalysisResult, ProgramOutput,
+};
 use crate::{
     analysis::{
         build_plan::{BuildPlan, Invocation},
@@ -9,71 +13,107 @@ use crate::{
     rustc,
 };
 use anyhow::anyhow;
-use owo_colors::colors::*;
-use owo_colors::OwoColorize;
-use xterm::*;
+use itertools::Itertools;
 use std::io::{BufReader, Read};
 use std::{
     env, fs,
     process::{Command, Stdio},
 };
 
-pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
+pub fn execute_build_plan(
+    mut build_plan: BuildPlan,
+    args: Args,
+) -> anyhow::Result<Vec<ProgramOutput>> {
     let taint_sources = get_taint_sources_definitions();
     let mut actual_used_taint_sources = Vec::default();
     for module in &taint_sources {
         actual_used_taint_sources.extend(module.sources.clone().into_iter());
     }
-    let actual_used_taint_sources = &actual_used_taint_sources;
+    let mut actual_used_taint_sources = Vec::with_capacity(actual_used_taint_sources.len());
+    if args.taint_sources.is_empty() {
+        actual_used_taint_sources.extend(
+            taint_sources
+                .iter()
+                .flat_map(|module| &module.sources)
+                .cloned(),
+        );
+    } else {
+        let iter = args.taint_sources.iter().map(|prefix| {
+            taint_sources
+                .iter()
+                .flat_map(|m| m.sources.iter())
+                .filter(move |source| source.functions.iter().any(|f| f.starts_with(prefix)))
+                .cloned()
+                .unique()
+        });
+
+        for value in iter {
+            actual_used_taint_sources.extend(value);
+        }
+    }
+
+    if actual_used_taint_sources.is_empty() {
+        return Err(anyhow!("No taint sources found"));
+    }
 
     let total_invocations = build_plan.invocations.len();
+
+    let mut results = Vec::new();
+
+    if args.list_taint_sources {
+        for module in &taint_sources {
+            results.push(ProgramOutput::TaintSourceList(module.into()));
+        }
+    }
 
     for i in 0..build_plan.invocations.len() {
         let current = build_plan.invocations.get(i).unwrap();
 
         println!(
-            "Compiling {}/{}: {} v{}",
-            i + 1,
-            total_invocations,
-            current.package_name,
-            current.package_version
+            "{}",
+            ProgramOutput::Message(format!(
+                "Compiling {}/{}: {} v{}",
+                i + 1,
+                total_invocations,
+                current.package_name,
+                current.package_version
+            ))
+            .to_format(args.output_format)
         );
 
         let links = current.links.clone();
 
-        match current.compile_mode {
+        let result = match current.compile_mode {
             CompileMode::Build => {
                 let results =
                     execute_build_invocation_mir_analysis(current, &actual_used_taint_sources)?;
 
-                /* println!(
-                    " - Found {} functions",
-                    results.taint_problems.len()
-                );
-                for func in results.taint_problems.iter().take(10) {
-                    println!("    - {}", func.0.function_name)
-                }
-                if results.taint_problems.len() > 10 {
-                    println!("      ...")
-                }*/
+                Some(AnalysisResult {
+                    package_name: results.package_name,
+                    package_version: results.package_version,
+                    result: if results.taint_problems.is_empty()
+                        || results.taint_problems.iter().all(|(_, v)| v.is_empty())
+                    {
+                        PackageAnalysisResult::Success
+                    } else {
+                        let mut problem_results = Vec::new();
 
-                let mut problem_found = false;
-                for (function, problems) in results.taint_problems {
-                    for problem in problems {
-                        problem_found = true;
+                        for (function, problems) in results.taint_problems {
+                            for problem in problems {
+                                problem_results.push(AnalysisProblem {
+                                    description: problem.taint_source.description.to_owned(),
+                                    problematic_function: function.function_name.clone(),
+                                    problematic_function_loc: function.span.clone(),
+                                    taint_source: problem.source_func_sig.clone(),
+                                    taint_source_loc: problem.source_span.clone(),
+                                    detailed: problem.into(),
+                                });
+                            }
+                        }
 
-                        println!("{} found in {}:{} {:?}", "Sanitizing problem".red().bold(), results.package_name, function.function_name.italic().yellow(), function.span.fg::<LightGray>());
-                        println!(" {} Usage of {} at {}", "|".bold(), problem.source_func_sig.bold().blue(), problem.source_span.fg::<LightGray>());
-                        println!(" {} without wrapping the result as {} is discouraged", "|".bold(), "UntrustedValue".bold().green());
-                        println!(" {} {} {}", "|".bold(), ">".italic(), problem.taint_source.description.italic());
-                        println!(" {} Make sure to wrap the result like this {}{}(...){}", "|".bold(), "UntrustedValue::from(".bold().green(), problem.source_func_sig.blue().bold(), ")".bold().green());
-                        println!();
-                    }
-                }
-
-                /* if problem_found {
-                    return Err(anyhow!("Found taint problems"));
-                }*/
+                        PackageAnalysisResult::Failure(problem_results)
+                    },
+                })
             }
             CompileMode::RunCustomBuild => {
                 let mut cmd = Command::new(&current.program)
@@ -207,8 +247,10 @@ pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
                         }
                     }
                 }
+
+                None
             }
-        }
+        };
 
         // create hardlinks
         for (link_name, target) in links {
@@ -225,8 +267,13 @@ pub fn execute_build_plan(mut build_plan: BuildPlan) -> anyhow::Result<()> {
                 return Err(anyhow::anyhow!("Failed to create hardlink: {}", error));
             }
         }
+
+        if let Some(result) = result {
+            results.push(ProgramOutput::AnalysisResult(result));
+        }
     }
-    Ok(())
+
+    Ok(results)
 }
 
 #[allow(dead_code)]
@@ -272,7 +319,9 @@ fn execute_build_invocation_mir_analysis<'tsrc>(
         draw_graphs_dir: {
             if invocation.package_name == "sample" {
                 Some("/tmp/taint/".into())
-            } else { None }
+            } else {
+                None
+            }
         },
         taint_sources,
     };

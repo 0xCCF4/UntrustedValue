@@ -1,6 +1,6 @@
-use std::fmt::Debug;
 use rustc_hir::intravisit::Visitor as HirVisitor;
 use rustc_middle::ty;
+use std::fmt::Debug;
 
 use crate::IRSpan;
 

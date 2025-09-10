@@ -1,8 +1,8 @@
+use crate::semver_from_string;
 use config::Map;
 use serde::de::{self, Error};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::str::FromStr;
 
 // Copied from https://docs.rs/crate/build-plan/0.1.1/source/src/lib.rs
 // License:
@@ -220,14 +220,6 @@ pub enum CompileMode {
     RunCustomBuild,
     #[serde(rename = "build")]
     Build,
-}
-
-fn semver_from_string<'de, D>(deserializer: D) -> Result<semver::Version, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    semver::Version::from_str(&s).map_err(D::Error::custom)
 }
 
 /// A tool invocation.

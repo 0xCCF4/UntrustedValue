@@ -30,18 +30,18 @@
 ///
 /// More on the guaranteed properties:
 /// 1. All data parts in the input that were annotated as `UntrustedValue` must be dropped in the output or somehow again
-///     wrapped in a `UntrustedValue` container. For example, when implementing this trait for `UntrustedValue<Example>` property
-///     (1) is conserved since the member `name` is wrapped in an `UntrustedValue` container. Dropping parts of the input
-///     is allowed since this means that the data can not be used in an untrusted manner anymore.
+///    wrapped in a `UntrustedValue` container. For example, when implementing this trait for `UntrustedValue<Example>` property
+///    (1) is conserved since the member `name` is wrapped in an `UntrustedValue` container. Dropping parts of the input
+///    is allowed since this means that the data can not be used in an untrusted manner anymore.
 /// 2. This constraint is placed upon the user of this trait to make security analysis of the code easier. Analysing the
-///     sanitization process is in that sense easier because analysts can focus analysing the implementations of `SanitizeWith`
-///     and `SanitizeValue` that are designated for sanitization.
+///    sanitization process is in that sense easier because analysts can focus analysing the implementations of `SanitizeWith`
+///    and `SanitizeValue` that are designated for sanitization.
 /// 3. If the input is not tainted, hence implementing this trait for a trusted type (e.g. the `Example` struct), the input
-///     should be regarded the same as in property (1). This means implementing this trait for `UntrustedValue<Example>` or
-///     `Example` should yield the same result. This constraint is placed upon the user of this trait since
-///     crates providing Serialize/Deserialize features (like Serde) will likely operate on trusted types (e.g. `Example`).
-///     Using the `ÌntoUntrustedVariant` trait is therefore the shortcut to first wrap the trusted type in `UntrustedValue`
-///     and then calling `IntoUntrustedVariant` on it.
+///    should be regarded the same as in property (1). This means implementing this trait for `UntrustedValue<Example>` or
+///    `Example` should yield the same result. This constraint is placed upon the user of this trait since
+///    crates providing Serialize/Deserialize features (like Serde) will likely operate on trusted types (e.g. `Example`).
+///    Using the `ÌntoUntrustedVariant` trait is therefore the shortcut to first wrap the trusted type in `UntrustedValue`
+///    and then calling `IntoUntrustedVariant` on it.
 pub trait IntoUntrustedVariant<OtherInsecure> {
     /// Returns an equivalent untrusted type.
     ///

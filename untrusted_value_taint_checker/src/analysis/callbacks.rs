@@ -1,15 +1,15 @@
 use std::path::PathBuf;
 
+use super::{
+    hir::crate_function_finder::{CrateFunctionFinder, FunctionInfo},
+    mir::data_flow::DataFlowTaintTracker,
+};
+use crate::analysis::taint_problem::TaintProblem;
 use crate::analysis::{mir::data_flow_checker, taint_source::TaintSource};
 use graphviz_rust::printer::{DotPrinter, PrinterContext};
 use rustc_driver::Compilation;
 use rustc_middle::{mir::visit::Visitor as VisitorMir, ty::TyCtxt};
 use tracing::{event, span, Level};
-use crate::analysis::taint_problem::TaintProblem;
-use super::{
-    hir::crate_function_finder::{CrateFunctionFinder, FunctionInfo},
-    mir::data_flow::DataFlowTaintTracker,
-};
 
 pub struct TaintCompilerCallbacks<'tsrc> {
     pub package_name: String,
@@ -78,8 +78,7 @@ pub fn mir_analysis(tcx: TyCtxt, callback_data: &mut TaintCompilerCallbacks) {
     }
 
     for function in functions {
-        if callback_data.data_flow_analysis
-        {
+        if callback_data.data_flow_analysis {
             let body = tcx.optimized_mir(function.local_def_id);
             let mut tracker = DataFlowTaintTracker::new(tcx, body);
 
@@ -97,7 +96,10 @@ pub fn mir_analysis(tcx: TyCtxt, callback_data: &mut TaintCompilerCallbacks) {
                 let dir_path = graph_dir.join(&callback_data.package_name);
                 std::fs::create_dir_all(&dir_path).expect("Failed to create directory");
                 let dot_file = dir_path.join(&function.function_name).with_extension("dot");
-                let dot = check.data_dependency_graph.unwrap().print(&mut PrinterContext::default());
+                let dot = check
+                    .data_dependency_graph
+                    .unwrap()
+                    .print(&mut PrinterContext::default());
                 std::fs::write(&dot_file, format!("{}", dot)).expect("Failed to write dot file");
                 let pdf_file = dot_file.with_extension("pdf");
                 let mut cmd = std::process::Command::new("dot")
@@ -113,7 +115,9 @@ pub fn mir_analysis(tcx: TyCtxt, callback_data: &mut TaintCompilerCallbacks) {
                 }
             }
 
-            callback_data.taint_problems.insert(function, check.taint_problems);
+            callback_data
+                .taint_problems
+                .insert(function, check.taint_problems);
         }
     }
 }

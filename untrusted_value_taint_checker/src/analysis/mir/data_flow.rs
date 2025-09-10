@@ -68,7 +68,9 @@ pub struct GraphEdge {
 
 impl GraphEdge {
     pub fn is_move_only(&self) -> bool {
-        self.instances.iter().all(|x| x.data_flow_type == EdgeDataFlowType::Move)
+        self.instances
+            .iter()
+            .all(|x| x.data_flow_type == EdgeDataFlowType::Move)
     }
 }
 

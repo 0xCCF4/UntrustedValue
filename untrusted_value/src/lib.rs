@@ -139,9 +139,9 @@
 //!
 //! Optional features:
 //!  * `derive_harden_sanitize`: enables hardening for the derive macro `SanitizeValue`. When this feature is disabled, the
-//!     implemented `fn sanitize_value(self)` errors-early. Which may be undesired if sanitizing timing side
-//!     channels are a concern. When enabling this feature, first all sanitizers are run, then
-//!     the first error is propagated.
+//!    implemented `fn sanitize_value(self)` errors-early. Which may be undesired if sanitizing timing side
+//!    channels are a concern. When enabling this feature, first all sanitizers are run, then
+//!    the first error is propagated.
 //!
 //! ## Runtime overhead
 //! When using compile optimizations there should be no runtime overhead since
